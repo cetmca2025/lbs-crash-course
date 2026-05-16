@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SYSTEM_PROMPT as DEFAULT_SYSTEM_PROMPT } from "@/lib/ai-service";
 
-export const runtime = 'edge';
-
 // 1. Provider Configurations & Key Rotation
 const GEMINI_KEYS = (process.env.GEMINI_API_KEYS || "").split(",").filter(Boolean);
 const GROQ_KEYS = (process.env.GROQ_API_KEYS || "").split(",").filter(Boolean);
 const NVIDIA_KEYS = (process.env.NVIDIA_API_KEYS || "").split(",").filter(Boolean);
-const PICO_API_URL = process.env.AI_API_URL || "";
 
 function getRandomKey(keys: string[]) {
     if (keys.length === 0) return null;
@@ -64,7 +61,7 @@ async function callGeminiStream(messages: { role: string; content: string }[]): 
                             } catch { /* Skip malformed JSON */ }
                         }
                     }
-                } catch (e) {
+                } catch {
                     controller.close();
                 }
             },
@@ -72,8 +69,8 @@ async function callGeminiStream(messages: { role: string; content: string }[]): 
         });
 
         return { stream };
-    } catch (e: any) {
-        return { stream: null, error: e.message || "Fetch failed" };
+    } catch (error) {
+        return { stream: null, error: error instanceof Error ? error.message : "Fetch failed" };
     }
 }
 
@@ -125,7 +122,7 @@ async function callGroqStream(messages: { role: string; content: string }[]): Pr
                             } catch { /* Skip malformed JSON */ }
                         }
                     }
-                } catch (e) {
+                } catch {
                     controller.close();
                 }
             },
@@ -133,8 +130,8 @@ async function callGroqStream(messages: { role: string; content: string }[]): Pr
         });
 
         return { stream };
-    } catch (e: any) {
-        return { stream: null, error: e.message || "Fetch failed" };
+    } catch (error) {
+        return { stream: null, error: error instanceof Error ? error.message : "Fetch failed" };
     }
 }
 
@@ -186,7 +183,7 @@ async function callNvidiaStream(messages: { role: string; content: string }[]): 
                             } catch { /* Skip malformed JSON */ }
                         }
                     }
-                } catch (e) {
+                } catch {
                     controller.close();
                 }
             },
@@ -194,8 +191,8 @@ async function callNvidiaStream(messages: { role: string; content: string }[]): 
         });
 
         return { stream };
-    } catch (e: any) {
-        return { stream: null, error: e.message || "Fetch failed" };
+    } catch (error) {
+        return { stream: null, error: error instanceof Error ? error.message : "Fetch failed" };
     }
 }
 
@@ -252,8 +249,11 @@ export async function POST(req: NextRequest) {
             }
         }, { status: 503 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("AI Proxy Error:", error);
-        return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 });
+        return NextResponse.json({
+            error: "Internal server error",
+            details: error instanceof Error ? error.message : "Unknown error",
+        }, { status: 500 });
     }
 }
