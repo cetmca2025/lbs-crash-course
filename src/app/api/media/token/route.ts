@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/auth-utils";
 
-export const runtime = 'nodejs';
-
 type Payload = { id: string; kind: "yt" | "note"; exp: number; t: number };
 
 async function getKey(secret: string): Promise<CryptoKey> {
