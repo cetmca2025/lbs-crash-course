@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { v2 as cloudinary } from "cloudinary";
 import { verifySession } from "@/lib/auth-utils";
-
-export const runtime = 'nodejs';
-
-// Configure Cloudinary
-cloudinary.config({
-    cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-// Simple in-memory rate limiter (resets on server restart/redeploy, but helps against basic spam)
+// Simple in-memory rate limiter (per-isolate on CF Workers — resets on cold starts)
 const uploadRateLimit = new Map<string, { count: number, lastUpload: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_UPLOADS_PER_WINDOW = 5;
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -82,40 +81,70 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Invalid file type. Only JPG, PNG, and WEBP allowed." }, { status: 400 });
         }
 
-        // 3. Simple protection for Registration flow
-        // In a more complex app, we'd use CSRF tokens or short-lived registration sessions.
-        // For now, we ensure the file is an image and limit its size.
-        
+        // 3. Convert to base64 data URI for Cloudinary upload (edge-compatible, no Node.js Buffer/Streams)
         const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        const base64Data = arrayBufferToBase64(arrayBuffer);
+        const dataUri = `data:${file.type};base64,${base64Data}`;
 
+        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+        const apiKey = process.env.CLOUDINARY_API_KEY;
+        const apiSecret = process.env.CLOUDINARY_API_SECRET;
         const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-        return await new Promise<NextResponse>((resolve) => {
-            const timeoutId = setTimeout(() => {
-                console.error("[Upload API] Cloudinary upload timed out after 15s");
-                resolve(NextResponse.json({ error: "Upload timed out. Please try a smaller file or better connection." }, { status: 504 }));
-            }, 15000);
+        if (!cloudName || !apiKey || !apiSecret) {
+            return NextResponse.json({ error: "Upload service not configured" }, { status: 500 });
+        }
 
-            const uploadStream = cloudinary.uploader.upload_stream(
-                { 
-                    upload_preset: uploadPreset,
-                    folder: "lbs-mca-uploads",
-                    resource_type: "image"
-                },
-                (error, result) => {
-                    clearTimeout(timeoutId);
-                    if (error) {
-                        console.error("Cloudinary upload stream error:", error);
-                        resolve(NextResponse.json({ error: error.message }, { status: 500 }));
-                    } else {
-                        resolve(NextResponse.json({ secure_url: result?.secure_url }, { status: 200 }));
-                    }
+        // Use Cloudinary's unsigned upload with preset, or signed upload via REST API
+        const cloudinaryForm = new FormData();
+        cloudinaryForm.append("file", dataUri);
+        cloudinaryForm.append("folder", "lbs-mca-uploads");
+        if (uploadPreset) {
+            cloudinaryForm.append("upload_preset", uploadPreset);
+        }
+        cloudinaryForm.append("api_key", apiKey);
+
+        // Generate signature for signed upload
+        const timestamp = Math.floor(Date.now() / 1000).toString();
+        cloudinaryForm.append("timestamp", timestamp);
+
+        const signatureString = `folder=lbs-mca-uploads&timestamp=${timestamp}${uploadPreset ? `&upload_preset=${uploadPreset}` : ""}${apiSecret}`;
+        const encoder = new TextEncoder();
+        const hashBuffer = await crypto.subtle.digest("SHA-1", encoder.encode(signatureString));
+        const hashArray = new Uint8Array(hashBuffer);
+        const signature = Array.from(hashArray).map(b => b.toString(16).padStart(2, "0")).join("");
+        cloudinaryForm.append("signature", signature);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        try {
+            const cloudinaryResponse = await fetch(
+                `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+                {
+                    method: "POST",
+                    body: cloudinaryForm,
+                    signal: controller.signal,
                 }
             );
 
-            uploadStream.end(buffer);
-        });
+            clearTimeout(timeoutId);
+
+            if (!cloudinaryResponse.ok) {
+                const errData = await cloudinaryResponse.json().catch(() => ({}));
+                console.error("[Upload API] Cloudinary error:", errData);
+                return NextResponse.json({ error: (errData as any)?.error?.message || "Upload failed" }, { status: 500 });
+            }
+
+            const result = await cloudinaryResponse.json();
+            return NextResponse.json({ secure_url: (result as any).secure_url }, { status: 200 });
+        } catch (fetchError) {
+            clearTimeout(timeoutId);
+            if (fetchError instanceof DOMException && fetchError.name === "AbortError") {
+                return NextResponse.json({ error: "Upload timed out. Please try a smaller file or better connection." }, { status: 504 });
+            }
+            throw fetchError;
+        }
 
     } catch (error: unknown) {
         if (error instanceof TypeError) {
