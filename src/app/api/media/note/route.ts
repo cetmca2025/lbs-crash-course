@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = 'edge';
-
 type Payload = { id: string; kind: "note"; exp: number; t: number };
 
 async function getKey(secret: string): Promise<CryptoKey> {
