@@ -521,7 +521,7 @@ function VideoPlayerDialog({ video, open, onOpenChange }: { video: RecordedClass
                 <div 
                     ref={playerRootRef} 
                     className={`relative w-full bg-black flex items-center justify-center overflow-hidden group ${
-                        isFullscreen ? 'fixed inset-0 z-999999 aspect-auto' : 'aspect-video'
+                        isFullscreen ? 'fixed inset-0 z-[999999] aspect-auto' : 'aspect-video'
                     }`}
                     style={isFullscreen ? { width: '100vw', height: '100vh', top: 0, left: 0 } : undefined}
                     onContextMenu={(e) => e.preventDefault()}
@@ -696,21 +696,11 @@ function VideoPlayerDialog({ video, open, onOpenChange }: { video: RecordedClass
                 <div className="px-4 py-3 sm:px-6 sm:py-4 bg-zinc-950/80 backdrop-blur-xl border-t border-white/5">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                         <div className="flex items-center gap-4 sm:gap-6">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Protection Status</span>
-                                <div className="flex items-center gap-2">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
-                                    <span className="text-[10px] text-zinc-300 font-mono">ENCRYPTED LBS-KERALA-SECURE-V2</span>
-                                </div>
-                            </div>
+                          
                             <div className="h-8 w-px bg-white/5 hidden sm:block" />
                             <div className="flex flex-col">
-                                <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Viewer Email</span>
                                 <span className="text-[10px] text-zinc-300 font-mono">{userData?.email}</span>
                             </div>
-                        </div>
-                        <div className="text-[9px] text-zinc-600 font-bold tracking-[0.2em] uppercase opacity-60">
-                            CET MCA VIRTUAL SECURE PLAYER v4.0
                         </div>
                     </div>
                 </div>

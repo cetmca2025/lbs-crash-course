@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+export const runtime = "edge";
 
 type Payload = { id: string; kind: "yt" | "note"; exp: number; t: number };
 

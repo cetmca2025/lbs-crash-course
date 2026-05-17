@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+export const runtime = "edge";
 
 type Payload = { id: string; kind: "note"; exp: number; t: number };
 
@@ -227,7 +228,7 @@ export async function GET(req: NextRequest) {
     const headers = new Headers();
     // Prefer actual content type if it seems like a valid document/media, otherwise fallback to PDF
     headers.set("Content-Type", sourceContentType.includes("pdf") ? "application/pdf" : sourceContentType);
-    headers.set("Cache-Control", "private, no-store, no-cache, must-revalidate");
+    headers.set("Cache-Control", "private, max-age=86400, immutable");
     headers.set("Content-Disposition", `inline; filename="note-${Date.now()}.${sourceContentType.includes("pdf") ? "pdf" : "bin"}"`);
     headers.set("X-Content-Type-Options", "nosniff");
     headers.set("Cross-Origin-Resource-Policy", "same-origin");
