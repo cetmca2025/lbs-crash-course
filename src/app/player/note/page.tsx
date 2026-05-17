@@ -449,8 +449,7 @@ function NoteViewerInner() {
               <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/70 backdrop-blur-sm">
                 <div className="text-center p-6 bg-card/50 rounded-3xl border border-border shadow-2xl backdrop-blur-xl">
                   <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-primary" />
-                  <p className="text-sm font-semibold text-foreground tracking-wide">Initializing Secure Note...</p>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">Encrypted Environment Active</p>
+                  <p className="text-sm font-semibold text-foreground tracking-wide">Initializing NoteS...</p>
                 </div>
               </div>
             )}

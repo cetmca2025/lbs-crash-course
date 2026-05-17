@@ -371,7 +371,7 @@ function RecordingPlayerDialog({ open, onOpenChange, title, subject, url, userEm
                 <div 
                     ref={playerRootRef} 
                     className={`relative w-full bg-black flex items-center justify-center overflow-hidden border-b border-white/5 group ${
-                        isFullscreen ? 'fixed inset-0 z-999999 aspect-auto' : 'aspect-video'
+                        isFullscreen ? 'fixed inset-0 z-[999999] aspect-auto' : 'aspect-video'
                     }`}
                     style={isFullscreen ? { width: '100vw', height: '100vh', top: 0, left: 0 } : undefined}
                     onContextMenu={(e) => e.preventDefault()}
@@ -573,13 +573,9 @@ function RecordingPlayerDialog({ open, onOpenChange, title, subject, url, userEm
                                 <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
                                 PROGRESS: {fmt(currentTime)} / {fmt(duration || 0)}
                             </span>
-                            <span className="flex items-center gap-2 uppercase tracking-widest">
-                                Server ID: LBS-KERALA-01
-                            </span>
+                           
                         </div>
-                        <div className="text-zinc-600 font-bold tracking-[0.3em] uppercase opacity-40">
-                            PROTECTED BY CET MCA VIRTUAL SECURE PLAYER
-                        </div>
+                      
                     </div>
                 </div>
             </div>

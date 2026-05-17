@@ -8,7 +8,7 @@ import { underMaintenance } from "@/lib/maintenance";
 import MaintenancePage from "@/app/maintenance/page";
 
 
-import ToolPixOverlay from "@/components/ai/ToolPixOverlay";
+
 import FirebaseHealthPanel from "@/components/dev/FirebaseHealthPanel";
 import { Toaster } from "sonner";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
@@ -227,7 +227,7 @@ export default function RootLayout({
 
         <AuthProvider>
           {underMaintenance ? <MaintenancePage /> : children}
-          <ToolPixOverlay />
+
           {process.env.NODE_ENV === "development" && <FirebaseHealthPanel />}
 
           <Toaster richColors closeButton position="top-right" />
