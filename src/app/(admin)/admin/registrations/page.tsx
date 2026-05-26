@@ -16,7 +16,8 @@ import {
     CheckCircle, 
     Copy, 
     Mail,
-    Search
+    Search,
+    Trash2
 } from "lucide-react";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
@@ -28,7 +29,8 @@ import { firestore } from "@/lib/firebase";
 import type { PendingRegistration } from "@/lib/types";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
-import { approveRegistrationAction, syncStatusToGoogleSheetAction } from "@/app/actions/admin-actions";
+import { approveRegistrationAction, syncStatusToGoogleSheetAction, deleteRegistrationAction } from "@/app/actions/admin-actions";
+
 
 const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL || "";
 
@@ -246,6 +248,36 @@ LBS MCA Team`;
             setRejectionReason("");
         } catch {
             toast.error("Failed to reject registration");
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleDeleteRegistration = async () => {
+        if (!selectedReg) return;
+        
+        const confirmDelete = window.confirm(
+            `Are you sure you want to delete the registration record for ${selectedReg.name}?\n\nThis will ONLY remove the registration log from this page. It will NOT delete their user account, and they will still be able to login and use the website.`
+        );
+        
+        if (!confirmDelete) return;
+        
+        setProcessing(true);
+        try {
+            const result = await deleteRegistrationAction(selectedReg.id);
+            if (!result.success) {
+                throw new Error(result.message);
+            }
+            
+            toast.success("Registration record deleted successfully!");
+            
+            // Remove from local state
+            setRegistrations((prev) => prev.filter((r) => r.id !== selectedReg.id));
+            
+            setShowDetail(false);
+            setSelectedReg(null);
+        } catch (error: unknown) {
+            toast.error(`Failed to delete registration: ${(error as Error).message}`);
         } finally {
             setProcessing(false);
         }
@@ -494,7 +526,18 @@ LBS MCA Team`;
                                     </div>
                                 )}
 
-                                <DialogFooter className="gap-3 sm:gap-0">
+                                <DialogFooter className="gap-3 sm:gap-2 flex-row justify-end">
+                                    {selectedReg.status !== "pending" && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleDeleteRegistration}
+                                            disabled={processing}
+                                            className="hidden sm:inline-flex border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 hover:text-red-700 h-10 rounded-lg px-4 text-sm sm:mr-auto"
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-1.5" />
+                                            Delete Record
+                                        </Button>
+                                    )}
                                     {selectedReg.status === "pending" && (
                                         <Button
                                             variant="outline"
