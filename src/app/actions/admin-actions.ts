@@ -258,7 +258,29 @@ export async function syncApprovedUserToGoogleSheetAction(payload: {
     }
 }
 
+export async function deleteRegistrationAction(registrationId: string) {
+    if (!isInitialized || !adminFirestore) {
+        return { success: false, message: "Database service unavailable." };
+    }
+
+    try {
+        const adminUser = await verifyAdmin();
+        if (!adminUser) {
+            return { success: false, message: "Unauthorized: Insufficient permissions" };
+        }
+
+        await adminFirestore.collection("pendingRegistrations").doc(registrationId).delete();
+        revalidatePath("/admin/registrations");
+        return { success: true, message: "Registration record deleted successfully" };
+    } catch (error: unknown) {
+        const err = error as Error;
+        console.error("Server Action Error (Delete):", err);
+        return { success: false, message: err.message || "Failed to delete registration" };
+    }
+}
+
 export async function testAction() {
     console.log("Test Action called successfully");
     return { success: true, timestamp: Date.now() };
 }
+
