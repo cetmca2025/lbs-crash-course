@@ -74,7 +74,7 @@ export default function AdminOverview() {
 
             setStats({
                 pending: pendingCountSnap.data().count,
-                verified: verifiedCountSnap.data().count,
+                verified: verifiedCountSnap.data().count -1,
                 rejected: rejectedCountSnap.data().count,
                 upgrades: upgradesCountSnap.data().count,
                 liveClasses: liveSnap.data().count,
@@ -95,7 +95,7 @@ export default function AdminOverview() {
 
     const cards = [
         { label: "Pending Registrations", value: stats.pending, icon: UserPlus, color: "from-amber-500 to-orange-500", href: "/admin/registrations" },
-        { label: "Verified Users", value: stats.verified -1, icon: Users, color: "from-green-500 to-emerald-500", href: "/admin/users" },
+        { label: "Verified Users", value: stats.verified, icon: Users, color: "from-green-500 to-emerald-500", href: "/admin/users" },
         { label: "Upgrade Requests", value: stats.upgrades, icon: ArrowUpCircle, color: "from-violet-500 to-purple-500", href: "/admin/upgrades" },
         { label: "Live Classes", value: stats.liveClasses, icon: Video, color: "from-blue-500 to-cyan-500", href: "/admin/live-classes" },
         { label: "Quizzes", value: stats.quizzes, icon: BookOpen, color: "from-pink-500 to-rose-500", href: "/admin/quizzes" },

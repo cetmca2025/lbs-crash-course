@@ -83,7 +83,7 @@ export default function AdminAnalyticsPage() {
 
     const metrics = [
         { label: "Total Students", value: data.totalUsers, icon: Users, color: "from-blue-500 to-cyan-500" },
-        { label: "Verified Users", value: data.verifiedUsers-1, icon: Users, color: "from-green-500 to-emerald-500" },
+        { label: "Verified Users", value: data.verifiedUsers, icon: Users, color: "from-green-500 to-emerald-500" },
         { label: "Pending Registrations", value: data.pendingRegistrations, icon: UserPlus, color: "from-amber-500 to-orange-500" },
         { label: "Live Classes", value: data.liveClasses, icon: Video, color: "from-red-500 to-pink-500" },
         { label: "Recorded Classes", value: data.recordedClasses, icon: Video, color: "from-violet-500 to-purple-500" },
