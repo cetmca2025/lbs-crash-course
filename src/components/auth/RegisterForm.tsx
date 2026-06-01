@@ -338,10 +338,10 @@ export function RegisterForm() {
                                             <Image
                                                 src={
                                                     formData.selectedPackage === "live_only"
-                                                        ? "/qr/live-only-qr.png"
+                                                        ? "/qr/live-only-qr.jpeg"
                                                         : formData.selectedPackage === "recorded_only"
-                                                            ? "/qr/record-only-qr.png"
-                                                            : "/qr/combo-qr.png"
+                                                            ? "/qr/record-only-qr.jpeg"
+                                                            : "/qr/combo-qr.jpeg"
                                                 }
                                                 alt={`QR Code for ${selectedPackageLabel}`}
                                                 width={192}
@@ -360,10 +360,10 @@ export function RegisterForm() {
                                             <a
                                                 href={
                                                     formData.selectedPackage === "live_only"
-                                                        ? "/qr/live-only-qr.png"
+                                                        ? "/qr/live-only-qr.jpeg"
                                                         : formData.selectedPackage === "recorded_only"
-                                                            ? "/qr/record-only-qr.png"
-                                                            : "/qr/combo-qr.png"
+                                                            ? "/qr/record-only-qr.jpeg"
+                                                            : "/qr/combo-qr.jpeg"
                                                 }
                                                 download
                                                 aria-label="Download payment QR code"
