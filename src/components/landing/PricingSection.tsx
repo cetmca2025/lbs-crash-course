@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 const packages = [
     {
         name: "Recorded Only",
-        price: "₹350",
+        price: "₹249",
         description: "Access all recorded video lectures and study materials",
         features: ["Full recorded class library", "Weekly quizzes", "Mock tests", "Rank tracking", "Push notifications"],
         highlighted: false,
@@ -28,7 +28,7 @@ const packages = [
     },
     {
         name: "Live Only",
-        price: "₹350",
+        price: "₹249",
         description: "Join live classes with real-time interaction",
         features: ["Live interactive classes", "Live class recordings", "Weekly quizzes", "Mock tests", "Push notifications"],
         highlighted: false,

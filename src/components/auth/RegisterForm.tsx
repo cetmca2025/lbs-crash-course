@@ -33,9 +33,9 @@ import { submitRegistrationToSheet, savePendingRegistration } from "@/lib/regist
 const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL || "";
 
 const basePackageOptions = [
-    { value: "recorded_only", label: "Recorded Only - ₹350" },
-    { value: "live_only", label: "Live Only - ₹350" },
-    { value: "both", label: "Live + Recorded (Both) - ₹499" },
+    { value: "recorded_only", label: "Recorded Only - ₹249" },
+    { value: "live_only", label: "Live Only - ₹249" },
+    { value: "both", label: "Live + Recorded (Both) - ₹249" },
 ];
 
 export function RegisterForm() {
@@ -53,7 +53,7 @@ export function RegisterForm() {
     });
 
     const initialPackage = searchParams.get("package") || "";
-    const PACKAGE_PRICES: Record<string, number> = { recorded_only: 350, live_only: 350, both: 499 };
+    const PACKAGE_PRICES: Record<string, number> = { recorded_only: 249, live_only: 249, both: 249 };
     const [formData, setFormData] = useState({
         name: "",
         email: "",
