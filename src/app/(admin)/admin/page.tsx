@@ -74,7 +74,7 @@ export default function AdminOverview() {
 
             setStats({
                 pending: pendingCountSnap.data().count,
-                verified: verifiedCountSnap.data().count -1,
+                verified: verifiedCountSnap.data().count -2,
                 rejected: rejectedCountSnap.data().count,
                 upgrades: upgradesCountSnap.data().count,
                 liveClasses: liveSnap.data().count,

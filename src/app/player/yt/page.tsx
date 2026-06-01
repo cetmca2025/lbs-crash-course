@@ -60,7 +60,7 @@ function YTProxyInner() {
           rel: 0,
           iv_load_policy: 3,
           disablekb: 1,
-          autoplay: 1,
+          autoplay: 0,       // No autoplay — user must click play (prevents bot detection)
           mute: 0,
           playsinline: 1,
           modestbranding: 1,
@@ -73,9 +73,9 @@ function YTProxyInner() {
             const p = event.target as Player;
             playerRef.current = p; // Ensure ref is fully initialized
             try {
+              // Seek to resume point without autoplaying — playback is user-initiated via postMessage cmd:play
               if (start > 0) p.seekTo?.(start, true);
-              p.playVideo?.();
-              // Starting unmuted and unplayed for manual trigger
+              // Do NOT call p.playVideo() here — autoplay triggers YouTube bot detection
             } catch {}
 
             let duration = 0;
