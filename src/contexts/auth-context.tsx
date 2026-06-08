@@ -15,7 +15,6 @@ import {
     doc,
     getDoc,
     updateDoc,
-    onSnapshot,
 } from "firebase/firestore";
 import { auth, firestore, hasValidConfig } from "@/lib/firebase";
 import type { UserData } from "@/lib/types";
@@ -232,49 +231,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userDocRef = doc(firestore, "users", user.uid);
         let sessionCheckTimeoutRef: NodeJS.Timeout | null = null;
         
-        const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+        const checkUserDoc = async () => {
             if (suppressSessionCheckRef.current) return;
-            if (!docSnap.exists()) return;
-            const data = docSnap.data() as Partial<UserData>;
+            try {
+                const docSnap = await getDoc(userDocRef);
+                if (!docSnap.exists()) return;
+                const data = docSnap.data() as Partial<UserData>;
 
-            setUserData((prev) => ({ ...(prev ?? {}), ...data, uid: user.uid, activeSessionId: data.activeSessionId ?? "" } as UserData));
+                setUserData((prev) => ({ ...(prev ?? {}), ...data, uid: user.uid, activeSessionId: data.activeSessionId ?? "" } as UserData));
 
-            if (data.banned === true) {
-                void forceLogoutWithReason("banned");
-                return;
+                if (data.banned === true) {
+                    void forceLogoutWithReason("banned");
+                    return;
+                }
+
+                if (data.role === "admin") return;
+
+                // Session check
+                const currentSessionId = getStoredSessionId();
+                const activeSessionId = data.activeSessionId;
+                
+                const hasValidStoredSession = currentSessionId && typeof currentSessionId === "string" && currentSessionId.trim().length > 0;
+                if (activeSessionId && typeof activeSessionId === "string" && activeSessionId.trim().length > 0 && hasValidStoredSession && currentSessionId !== activeSessionId) {
+                    console.warn("[AUTH] Session ID mismatch detected. Current:", currentSessionId?.substring(0, 8), "Active:", activeSessionId.substring(0, 8));
+                    if (sessionCheckTimeoutRef) clearTimeout(sessionCheckTimeoutRef);
+                    sessionCheckTimeoutRef = setTimeout(() => {
+                        void forceLogoutWithReason("session_expired");
+                    }, 1000);
+                } else if (!hasValidStoredSession && activeSessionId && activeSessionId.trim().length > 0) {
+                    console.log("[AUTH] No stored session ID found, but user has active session in Firestore. Preserving session.");
+                }
+            } catch (err) {
+                console.warn("[AUTH] Polling check error:", err);
             }
+        };
 
-            if (data.role === "admin") return;
+        // Initial check on mount
+        checkUserDoc();
 
-            // Session check: Only logout if activeSessionId explicitly changed to a different value
-            // Don't logout if activeSessionId is empty/undefined, or if it hasn't been explicitly set
-            const currentSessionId = getStoredSessionId();
-            const activeSessionId = data.activeSessionId;
-            
-            // Only enforce session expiration if:
-            // 1. activeSessionId is explicitly set (not empty/undefined)
-            // 2. There's a stored session ID to compare against
-            // 3. It's different from the current stored session
-            // Note: If currentSessionId is null/undefined, we don't logout because it could be 
-            // a storage access issue rather than a real session problem
-            const hasValidStoredSession = currentSessionId && typeof currentSessionId === "string" && currentSessionId.trim().length > 0;
-            if (activeSessionId && typeof activeSessionId === "string" && activeSessionId.trim().length > 0 && hasValidStoredSession && currentSessionId !== activeSessionId) {
-                console.warn("[AUTH] Session ID mismatch detected. Current:", currentSessionId?.substring(0, 8), "Active:", activeSessionId.substring(0, 8));
-                // Add a small delay before logging out to allow for race conditions during app startup
-                if (sessionCheckTimeoutRef) clearTimeout(sessionCheckTimeoutRef);
-                sessionCheckTimeoutRef = setTimeout(() => {
-                    void forceLogoutWithReason("session_expired");
-                }, 1000);
-            } else if (!hasValidStoredSession && activeSessionId && activeSessionId.trim().length > 0) {
-                console.log("[AUTH] No stored session ID found, but user has active session in Firestore. Preserving session.");
-            }
-        }, (dbErr) => {
-            console.warn("[AUTH] Firestore subscription error:", dbErr);
-        });
+        // Poll every 5 minutes instead of real-time listener
+        const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
+        const intervalId = setInterval(checkUserDoc, POLL_INTERVAL);
 
         return () => {
             if (sessionCheckTimeoutRef) clearTimeout(sessionCheckTimeoutRef);
-            unsubscribe();
+            clearInterval(intervalId);
         };
     }, [forceLogoutWithReason, getStoredSessionId, user]);
 

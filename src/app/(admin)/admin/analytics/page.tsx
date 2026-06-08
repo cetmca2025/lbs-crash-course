@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, getCountFromServer } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import { BarChart3, Users, UserPlus, Video, BookOpen, FileText, TrendingUp, Activity, Zap, Target, RefreshCw } from "lucide-react";
 import recordingsData from "@/data/recordings.json";
@@ -30,7 +30,8 @@ export default function AdminAnalyticsPage() {
             const results: any = { ...data };
             
             const [
-                usersSnap,
+                totalUsersSnap,
+                verifiedUsersSnap,
                 pendingSnap,
                 liveSnap,
                 quizzesSnap,
@@ -39,35 +40,26 @@ export default function AdminAnalyticsPage() {
                 mockAttSnap,
                 annSnap
             ] = await Promise.all([
-                getDocs(collection(firestore, "users")),
-                getDocs(collection(firestore, "pendingRegistrations")),
-                getDocs(collection(firestore, "liveClasses")),
-                getDocs(collection(firestore, "quizzes")),
-                getDocs(collection(firestore, "mockTests")),
-                getDocs(collection(firestore, "quizAttempts")),
-                getDocs(collection(firestore, "mockAttempts")),
-                getDocs(collection(firestore, "announcements"))
+                getCountFromServer(collection(firestore, "users")),
+                getCountFromServer(query(collection(firestore, "users"), where("status", "==", "verified"))),
+                getCountFromServer(query(collection(firestore, "pendingRegistrations"), where("status", "==", "pending"))),
+                getCountFromServer(collection(firestore, "liveClasses")),
+                getCountFromServer(collection(firestore, "quizzes")),
+                getCountFromServer(collection(firestore, "mockTests")),
+                getCountFromServer(collection(firestore, "quizAttempts")),
+                getCountFromServer(collection(firestore, "mockAttempts")),
+                getCountFromServer(collection(firestore, "announcements"))
             ]);
 
-            let totalUsers = 0;
-            let verifiedUsers = 0;
-            usersSnap.forEach(doc => {
-                const d = doc.data();
-                if (d.role !== "admin") {
-                    totalUsers++;
-                    if (d.status === "verified") verifiedUsers++;
-                }
-            });
-
-            results.totalUsers = totalUsers;
-            results.verifiedUsers = verifiedUsers;
-            results.pendingRegistrations = pendingSnap.docs.filter(d => d.data().status === "pending").length;
-            results.liveClasses = liveSnap.size;
-            results.quizzes = quizzesSnap.size;
-            results.mockTests = mockSnap.size;
-            results.quizAttempts = quizAttSnap.size;
-            results.mockAttempts = mockAttSnap.size;
-            results.announcements = annSnap.size;
+            results.totalUsers = totalUsersSnap.data().count;
+            results.verifiedUsers = verifiedUsersSnap.data().count;
+            results.pendingRegistrations = pendingSnap.data().count;
+            results.liveClasses = liveSnap.data().count;
+            results.quizzes = quizzesSnap.data().count;
+            results.mockTests = mockSnap.data().count;
+            results.quizAttempts = quizAttSnap.data().count;
+            results.mockAttempts = mockAttSnap.data().count;
+            results.announcements = annSnap.data().count;
 
             setData(results);
         } catch (error) {

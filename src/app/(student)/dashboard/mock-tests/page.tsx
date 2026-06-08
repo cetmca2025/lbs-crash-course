@@ -67,7 +67,23 @@ export default function MockTestsPage() {
     }, [getLocalSessionKey]);
 
     useEffect(() => {
+        const CACHE_KEY = `mockTests_cache_${userData?.uid || "guest"}`;
+        const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
         const fetchData = async () => {
+            // Check sessionStorage cache first
+            try {
+                const cached = sessionStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    const { testsList, attemptMap, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < CACHE_TTL) {
+                        setMockTests(testsList);
+                        setMyAttempts(attemptMap);
+                        return;
+                    }
+                }
+            } catch { /* ignore cache errors */ }
+
             try {
                 const mtRef = fsQuery(collection(firestore, "mockTests"), orderBy("createdAt"));
                 const snapshot = await getDocs(mtRef);
@@ -79,23 +95,28 @@ export default function MockTestsPage() {
                     }
                 });
                 setMockTests(list.reverse());
-            } catch (err) {
-                console.error("Failed to fetch mock tests:", err);
-            }
 
-            if (userData?.uid) {
-                try {
+                let attemptMap: Record<string, QuizAttempt> = {};
+                if (userData?.uid) {
                     const attRef = fsQuery(collection(firestore, "mockAttempts"), where("userId", "==", userData.uid));
                     const attSnap = await getDocs(attRef);
-                    const attempts: Record<string, QuizAttempt> = {};
                     attSnap.forEach((child) => {
                         const data = child.data();
-                        attempts[data.mockTestId || data.quizId] = { ...data, id: child.id } as QuizAttempt;
+                        attemptMap[data.mockTestId || data.quizId] = { ...data, id: child.id } as QuizAttempt;
                     });
-                    setMyAttempts(attempts);
-                } catch (err) {
-                    console.error("Failed to fetch mock attempts:", err);
+                    setMyAttempts(attemptMap);
                 }
+
+                // Save to cache
+                try {
+                    sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+                        testsList: list.slice().reverse().reverse(), // already reversed above
+                        attemptMap,
+                        timestamp: Date.now()
+                    }));
+                } catch { /* ignore */ }
+            } catch (err) {
+                console.error("Failed to fetch mock tests:", err);
             }
         };
         fetchData();

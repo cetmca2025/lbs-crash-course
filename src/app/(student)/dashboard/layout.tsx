@@ -66,9 +66,28 @@ export default function StudentDashboardLayout({
         return () => window.removeEventListener("student-sidebar:open", openSidebar);
     }, []);
 
-    // Check for notification dots — one-time fetch instead of real-time listeners
+    // Check for notification dots — cached with 10-minute TTL
     const checkNotifications = useCallback(async () => {
         if (!user) return;
+
+        // Check sessionStorage cache first
+        const NOTIF_CACHE_KEY = "notif_check_cache";
+        const NOTIF_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+        try {
+            const cached = sessionStorage.getItem(NOTIF_CACHE_KEY);
+            if (cached) {
+                const { data, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp < NOTIF_CACHE_TTL) {
+                    setUnread({
+                        quizzes: data.latestQuiz > (data.stored.quizzes || 0) && pathname !== "/dashboard/quizzes",
+                        mockTests: data.latestMock > (data.stored.mockTests || 0) && pathname !== "/dashboard/mock-tests",
+                        announcements: data.latestAnn > (data.stored.announcements || 0) && pathname !== "/dashboard/announcements",
+                    });
+                    return;
+                }
+            }
+        } catch { /* ignore cache read errors */ }
+
         try {
             const getStored = () => {
                 try {
@@ -92,6 +111,14 @@ export default function StudentDashboardLayout({
 
             let latestAnn = 0;
             annSnap.forEach(d => { latestAnn = Math.max(latestAnn, d.data().createdAt || 0); });
+
+            // Cache the results
+            try {
+                sessionStorage.setItem(NOTIF_CACHE_KEY, JSON.stringify({
+                    data: { latestQuiz, latestMock, latestAnn, stored },
+                    timestamp: Date.now()
+                }));
+            } catch { /* ignore cache write errors */ }
 
             setUnread({
                 quizzes: latestQuiz > (stored.quizzes || 0) && pathname !== "/dashboard/quizzes",
