@@ -32,7 +32,23 @@ export default function QuizzesPage() {
     const [markedQuestions, setMarkedQuestions] = useState<number[]>([]);
 
     useEffect(() => {
+        const CACHE_KEY = `quizzes_cache_${userData?.uid || "guest"}`;
+        const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
         const fetchData = async () => {
+            // Check sessionStorage cache first
+            try {
+                const cached = sessionStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    const { quizzesList, attemptMap, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < CACHE_TTL) {
+                        setQuizzes(quizzesList);
+                        setMyAttempts(attemptMap);
+                        return;
+                    }
+                }
+            } catch { /* ignore cache errors */ }
+
             try {
                 const qRef = query(collection(firestore, "quizzes"), orderBy("createdAt", "desc"));
                 const snapshot = await getDocs(qRef);
@@ -44,23 +60,28 @@ export default function QuizzesPage() {
                     }
                 });
                 setQuizzes(list);
-            } catch (err) {
-                console.error("Failed to fetch quizzes:", err);
-            }
 
-            if (userData?.uid) {
-                try {
+                let attemptMap: Record<string, QuizAttempt> = {};
+                if (userData?.uid) {
                     const attRef = query(collection(firestore, "quizAttempts"), where("userId", "==", userData.uid));
                     const attSnap = await getDocs(attRef);
-                    const attempts: Record<string, QuizAttempt> = {};
                     attSnap.forEach((doc) => {
                         const data = doc.data() as QuizAttempt;
-                        attempts[data.quizId] = { ...data, id: doc.id };
+                        attemptMap[data.quizId] = { ...data, id: doc.id };
                     });
-                    setMyAttempts(attempts);
-                } catch (err) {
-                    console.error("Failed to fetch quiz attempts:", err);
+                    setMyAttempts(attemptMap);
                 }
+
+                // Save to cache
+                try {
+                    sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+                        quizzesList: list,
+                        attemptMap,
+                        timestamp: Date.now()
+                    }));
+                } catch { /* ignore */ }
+            } catch (err) {
+                console.error("Failed to fetch quizzes:", err);
             }
         };
         fetchData();

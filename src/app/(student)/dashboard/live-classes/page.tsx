@@ -74,6 +74,22 @@ function RecordingPlayerDialog({ open, onOpenChange, title, subject, url, userEm
                 if (active) setResolvedId("");
                 return;
             }
+
+            const CACHE_KEY = `media_token_${id}`;
+            const CACHE_TTL = 4 * 60 * 1000; // 4 minutes (token expires in 5m)
+
+            try {
+                // Check cache first
+                const cached = sessionStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    const { finalId, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < CACHE_TTL) {
+                        if (active) setResolvedId(finalId);
+                        return;
+                    }
+                }
+            } catch { /* ignore */ }
+
             try {
                 const fbToken = await user?.getIdToken();
                 const tokRes = await fetch("/api/media/token", {
@@ -93,6 +109,11 @@ function RecordingPlayerDialog({ open, onOpenChange, title, subject, url, userEm
                 const rj = await r.json().catch(() => ({}));
                 const finalId = rj?.id as string | undefined;
                 if (!finalId) throw new Error("no id");
+
+                try {
+                    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ finalId: String(finalId), timestamp: Date.now() }));
+                } catch { /* ignore */ }
+
                 if (active) setResolvedId(String(finalId));
             } catch {
                 if (active) setResolvedId(String(id));
@@ -639,7 +660,22 @@ export default function LiveClassesPage() {
     const [openingNoteId, setOpeningNoteId] = useState<string | null>(null);
 
     useEffect(() => {
+        const CACHE_KEY = "liveClasses_cache";
+        const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
         const fetchClasses = async () => {
+            // Check sessionStorage cache first
+            try {
+                const cached = sessionStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    const { classList, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < CACHE_TTL) {
+                        setClasses(classList);
+                        return;
+                    }
+                }
+            } catch { /* ignore */ }
+
             try {
                 const liveRef = fsQuery(collection(firestore, "liveClasses"), orderBy("scheduledAt"));
                 const snapshot = await getDocs(liveRef);
@@ -648,6 +684,11 @@ export default function LiveClassesPage() {
                     list.push({ ...child.data(), id: child.id } as LiveClass);
                 });
                 setClasses(list);
+
+                // Save to cache
+                try {
+                    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ classList: list, timestamp: Date.now() }));
+                } catch { /* ignore */ }
             } catch (err) {
                 console.error("Failed to fetch live classes:", err);
             }

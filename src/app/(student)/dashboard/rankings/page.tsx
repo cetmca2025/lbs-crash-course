@@ -74,54 +74,19 @@ export default function RankingsPage() {
             }
 
             setFetchError(null);
+            const res = await fetch(force ? "/api/rankings?bypassCache=true" : "/api/rankings");
+            if (!res.ok) throw new Error("Failed to fetch rankings");
+            const data = await res.json();
             
-            // Fetch all collections directly from Firestore
-            const [
-                quizzesSnap,
-                mockTestsSnap,
-                usersSnap,
-                quizAttsSnap,
-                mockAttsSnap
-            ] = await Promise.all([
-                getDocs(collection(firestore, "quizzes")),
-                getDocs(collection(firestore, "mockTests")),
-                getDocs(collection(firestore, "users")),
-                getDocs(collection(firestore, "quizAttempts")),
-                getDocs(collection(firestore, "mockAttempts"))
-            ]);
-
-            const quizzesObj: Record<string, any> = {};
-            quizzesSnap.forEach(doc => { quizzesObj[doc.id] = { id: doc.id, ...doc.data() }; });
-            
-            const mockTestsObj: Record<string, any> = {};
-            mockTestsSnap.forEach(doc => { mockTestsObj[doc.id] = { id: doc.id, ...doc.data() }; });
-            
-            const usersObj: Record<string, any> = {};
-            usersSnap.forEach(doc => { usersObj[doc.id] = { id: doc.id, ...doc.data() }; });
-            
-            const quizAttemptsList: any[] = [];
-            quizAttsSnap.forEach(doc => { quizAttemptsList.push({ id: doc.id, ...doc.data() }); });
-            
-            const mockAttemptsList: any[] = [];
-            mockAttsSnap.forEach(doc => { mockAttemptsList.push({ id: doc.id, ...doc.data() }); });
-
-            setQuizzes(quizzesObj);
-            setMockTests(mockTestsObj);
-            setAllUsers(usersObj);
-            setAllQuizAttempts(quizAttemptsList);
-            setAllMockAttempts(mockAttemptsList);
+            setQuizzes(data.quizzes || {});
+            setMockTests(data.mockTests || {});
+            setAllUsers(data.users || {});
+            setAllQuizAttempts(data.quizAttempts || []);
+            setAllMockAttempts(data.mockAttempts || []);
             
             const now = Date.now();
             setLastUpdated(now);
-            
-            const cacheData = {
-                quizzes: quizzesObj,
-                mockTests: mockTestsObj,
-                users: usersObj,
-                quizAttempts: quizAttemptsList,
-                mockAttempts: mockAttemptsList
-            };
-            sessionStorage.setItem("rankings_cache", JSON.stringify(cacheData));
+            sessionStorage.setItem("rankings_cache", JSON.stringify(data));
             sessionStorage.setItem("rankings_cache_time", now.toString());
 
             setLoaded({

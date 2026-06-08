@@ -12,7 +12,22 @@ export default function AnnouncementsPage() {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
     useEffect(() => {
+        const CACHE_KEY = "announcements_cache";
+        const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
         const fetchAnnouncements = async () => {
+            // Check sessionStorage cache first
+            try {
+                const cached = sessionStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    const { annList, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < CACHE_TTL) {
+                        setAnnouncements(annList);
+                        return;
+                    }
+                }
+            } catch { /* ignore */ }
+
             try {
                 const q = query(collection(firestore, "announcements"), orderBy("createdAt", "desc"));
                 const snapshot = await getDocs(q);
@@ -21,6 +36,11 @@ export default function AnnouncementsPage() {
                     id: doc.id,
                 })) as Announcement[];
                 setAnnouncements(list);
+
+                // Save to cache
+                try {
+                    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ annList: list, timestamp: Date.now() }));
+                } catch { /* ignore */ }
             } catch (err) {
                 console.error("Failed to fetch announcements:", err);
             }
