@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { firestore } from "@/lib/firebase";
 import { addDoc, collection, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import recordingsData from "@/data/recordings.json";
 
 export function FeedbackModal() {
     const { user, userData } = useAuth();
@@ -24,17 +25,34 @@ export function FeedbackModal() {
         if (userData && userData.status === "verified" && !userData.hasSubmittedFeedback) {
             const localSubmitted = localStorage.getItem(`feedback_submitted_${userData.uid}`);
             if (!localSubmitted) {
-                // Check video progress before showing
+                // Check video progress and join date before showing
                 try {
+                    // Check join date (at least 2 days ago)
+                    const joinDate = userData.createdAt || Date.now();
+                    const msInTwoDays = 2 * 24 * 60 * 60 * 1000;
+                    const joinedForTwoDays = (Date.now() - joinDate) >= msInTwoDays;
+
+                    // Calculate total video progress (at least 10% of total curriculum video content)
                     const raw = localStorage.getItem(`video_progress_${userData.uid}`);
                     const progressMap = raw ? JSON.parse(raw) : {};
-                    let hasWatchedEnough = false;
                     
-                    if (progressMap && Object.keys(progressMap).length > 0) {
-                        hasWatchedEnough = Object.values(progressMap).some((p: any) => (p.progressPercent || 0) > 5);
+                    const totalVideos = recordingsData.length;
+                    let watchedProgressSum = 0;
+                    
+                    if (totalVideos > 0 && progressMap) {
+                        recordingsData.forEach((vid: any) => {
+                            const p = progressMap[vid.id];
+                            if (p && typeof p.progressPercent === "number") {
+                                watchedProgressSum += Math.min(100, Math.max(0, p.progressPercent));
+                            }
+                        });
                     }
+                    
+                    const averageProgress = totalVideos > 0 ? (watchedProgressSum / totalVideos) : 0;
+                    const finishedTenPercent = averageProgress >= 10;
 
-                    if (hasWatchedEnough) {
+                    // Show modal if either condition is met (10% progress OR 2 days registered)
+                    if (finishedTenPercent || joinedForTwoDays) {
                         const timer = setTimeout(() => {
                             setIsOpen(true);
                             // Push a new state to history when modal opens to "trap" the back button
@@ -43,7 +61,7 @@ export function FeedbackModal() {
                         return () => clearTimeout(timer);
                     }
                 } catch (err) {
-                    console.error("Error checking video progress for feedback:", err);
+                    console.error("Error checking video progress and join date for feedback:", err);
                 }
             }
         }
