@@ -34,8 +34,7 @@ export async function GET() {
             {
                 status: 200,
                 headers: {
-                    // Cache at Vercel CDN for 5 minutes (lower than 1 hour to stay fresh with local cache)
-                    "Cache-Control": "public, s-maxage=300, stale-while-revalidate=300",
+                    "Cache-Control": "no-store, max-age=0, must-revalidate",
                 },
             }
         );

@@ -32,30 +32,10 @@ function LeaderboardSummary() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const CACHE_KEY = "leaderboard_top3_cache";
-        const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-
-        // Check sessionStorage cache first
-        try {
-            const cached = sessionStorage.getItem(CACHE_KEY);
-            if (cached) {
-                const { data, timestamp } = JSON.parse(cached);
-                if (Date.now() - timestamp < CACHE_TTL) {
-                    setTop3(data);
-                    setLoading(false);
-                    return;
-                }
-            }
-        } catch { /* ignore */ }
-
         fetch("/api/leaderboard/top3")
             .then((r) => r.json())
             .then((d) => {
-                const top3Data = d.top3 || [];
-                setTop3(top3Data);
-                try {
-                    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: top3Data, timestamp: Date.now() }));
-                } catch { /* ignore */ }
+                setTop3(d.top3 || []);
             })
             .catch(() => setTop3([]))
             .finally(() => setLoading(false));
