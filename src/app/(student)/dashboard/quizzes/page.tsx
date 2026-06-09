@@ -249,7 +249,7 @@ export default function QuizzesPage() {
                             <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-sm sm:text-base">
                                 {currentQ + 1}
                             </span>
-                            <p className="text-lg sm:text-xl font-medium leading-tight sm:leading-relaxed">{question.question}</p>
+                            <p className="text-lg sm:text-xl font-medium leading-tight sm:leading-relaxed whitespace-pre-wrap">{question.question}</p>
                         </div>
 
                         <div className="space-y-4">
@@ -297,7 +297,7 @@ export default function QuizzesPage() {
                                 <h4 className="font-bold text-blue-800 flex items-center gap-2 mb-2">
                                     <Info className="h-5 w-5" /> Explanation:
                                 </h4>
-                                <p className="text-blue-700 leading-relaxed">{question.explanation}</p>
+                                <p className="text-blue-700 leading-relaxed whitespace-pre-wrap">{question.explanation}</p>
                             </div>
                         )}
 

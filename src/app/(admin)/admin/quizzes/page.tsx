@@ -320,9 +320,9 @@ export default function AdminQuizzesPage() {
                                     </div>
                                 ) : (
                                     questions.map((q, i) => (
-                                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-zinc-100 hover:border-pink-200 hover:bg-pink-50/10 transition-all group/q">
-                                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-100 text-[10px] font-bold text-zinc-400 shrink-0">Q{i + 1}</span>
-                                            <span className="flex-1 text-sm font-medium truncate">{q.question}</span>
+                                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 hover:border-pink-200 dark:hover:border-pink-500/30 hover:bg-pink-50/10 transition-all group/q">
+                                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 shrink-0">Q{i + 1}</span>
+                                            <span className="flex-1 text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">{q.question}</span>
                                             <div className="flex items-center gap-1 opacity-0 group-hover/q:opacity-100 transition-opacity">
                                                 <Button
                                                     variant="ghost"
@@ -435,7 +435,7 @@ export default function AdminQuizzesPage() {
                             </div>
                         ) : (
                             viewingRanking.entries.map((entry) => (
-                                <div key={entry.userId} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-zinc-100 hover:border-yellow-200 hover:bg-yellow-50/30 transition-all shadow-sm">
+                                <div key={entry.userId} className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 hover:border-yellow-200 dark:hover:border-yellow-500/30 hover:bg-yellow-50/30 transition-all shadow-sm">
                                     <div className="flex items-center gap-4">
                                         <div className={`flex h-10 w-10 items-center justify-center rounded-xl font-black text-sm ${entry.rank === 1 ? "bg-yellow-500 text-white shadow-lg shadow-yellow-200" : entry.rank === 2 ? "bg-zinc-400 text-white shadow-lg shadow-zinc-200" : entry.rank === 3 ? "bg-amber-600 text-white shadow-lg shadow-amber-200" : "bg-zinc-100 text-zinc-500"}`}>
                                             {entry.rank}

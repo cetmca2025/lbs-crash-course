@@ -322,7 +322,7 @@ export default function MockTestsPage() {
                             <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 font-bold text-sm sm:text-base">
                                 {currentQ + 1}
                             </span>
-                            <p className="text-lg sm:text-xl font-medium leading-tight sm:leading-relaxed">{question.question}</p>
+                            <p className="text-lg sm:text-xl font-medium leading-tight sm:leading-relaxed whitespace-pre-wrap">{question.question}</p>
                         </div>
 
                         <div className="space-y-4">
@@ -370,7 +370,7 @@ export default function MockTestsPage() {
                                 <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-2">
                                     <Info className="h-5 w-5" /> Explanation:
                                 </h4>
-                                <p className="text-amber-700 leading-relaxed">{question.explanation}</p>
+                                <p className="text-amber-700 leading-relaxed whitespace-pre-wrap">{question.explanation}</p>
                             </div>
                         )}
 

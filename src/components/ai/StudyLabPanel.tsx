@@ -445,7 +445,7 @@ export default function StudyLabPanel({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <p className="text-base font-medium">{currentTestQuestion.question}</p>
+                    <p className="text-base font-medium whitespace-pre-wrap">{currentTestQuestion.question}</p>
                     <div className="space-y-2">
                       {currentTestQuestion.options.map((opt, idx) => {
                         const selected = testAnswers[testIndex] === idx;
@@ -478,7 +478,7 @@ export default function StudyLabPanel({
                     {testSubmitted && currentTestQuestion.explanation && (
                       <div className="rounded-xl border border-border bg-muted/25 p-3 text-sm">
                         <p className="font-semibold mb-1">Explanation</p>
-                        <p>{currentTestQuestion.explanation}</p>
+                        <p className="whitespace-pre-wrap">{currentTestQuestion.explanation}</p>
                       </div>
                     )}
 
