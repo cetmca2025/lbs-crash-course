@@ -45,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [userData, setUserData] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
     const suppressSessionCheckRef = useRef(false);
+    const skipNextAuthFetchRef = useRef(false);
 
     // Generate unique session ID fallback
     const generateSessionId = () => {
@@ -186,23 +187,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         console.warn("[AUTH] Failed to get ID token for cookie:", tokenErr);
                     }
 
-                    try {
-                        const userDocRef = doc(firestore, "users", firebaseUser.uid);
-                        const userDocSnap = await Promise.race([
-                            getDoc(userDocRef),
-                            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Firestore timeout")), 4500))
-                        ]);
-                        if (userDocSnap.exists()) {
-                            const data = userDocSnap.data() as Partial<UserData>;
-                            const role = data.role || "student";
-                            try {
-                                const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
-                                document.cookie = `__role=${role}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax${isSecure ? "; Secure" : ""}`;
-                            } catch { /* cookie write may fail */ }
-                            setUserData({ ...data, uid: firebaseUser.uid, activeSessionId: data.activeSessionId ?? "" } as UserData);
+                    // Issue 3 fix: Skip Firestore read if login() already populated userData
+                    if (skipNextAuthFetchRef.current) {
+                        skipNextAuthFetchRef.current = false;
+                    } else {
+                        try {
+                            const userDocRef = doc(firestore, "users", firebaseUser.uid);
+                            const userDocSnap = await Promise.race([
+                                getDoc(userDocRef),
+                                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Firestore timeout")), 4500))
+                            ]);
+                            if (userDocSnap.exists()) {
+                                const data = userDocSnap.data() as Partial<UserData>;
+                                const role = data.role || "student";
+                                try {
+                                    const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
+                                    document.cookie = `__role=${role}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax${isSecure ? "; Secure" : ""}`;
+                                } catch { /* cookie write may fail */ }
+                                setUserData({ ...data, uid: firebaseUser.uid, activeSessionId: data.activeSessionId ?? "" } as UserData);
+                            }
+                        } catch (dbErr) {
+                            console.warn("[AUTH] Failed to fetch user data from Firestore:", dbErr);
                         }
-                    } catch (dbErr) {
-                        console.warn("[AUTH] Failed to fetch user data from Firestore:", dbErr);
                     }
                 } else {
                     setUserData(null);
@@ -225,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
+    // Issue 4 fix: Only poll when tab is visible; increased interval to 10 min
     useEffect(() => {
         if (!user || !hasValidConfig) return;
 
@@ -233,6 +240,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         const checkUserDoc = async () => {
             if (suppressSessionCheckRef.current) return;
+            // Skip poll if tab is hidden to save Firestore reads
+            if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
             try {
                 const docSnap = await getDoc(userDocRef);
                 if (!docSnap.exists()) return;
@@ -269,13 +278,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Initial check on mount
         checkUserDoc();
 
-        // Poll every 5 minutes instead of real-time listener
-        const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
+        // Poll every 10 minutes (reduced from 5 to save Firestore reads)
+        const POLL_INTERVAL = 10 * 60 * 1000; // 10 minutes
         const intervalId = setInterval(checkUserDoc, POLL_INTERVAL);
+
+        // Also check when tab becomes visible again
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                checkUserDoc();
+            }
+        };
+        document.addEventListener("visibilitychange", handleVisibilityChange);
 
         return () => {
             if (sessionCheckTimeoutRef) clearTimeout(sessionCheckTimeoutRef);
             clearInterval(intervalId);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
     }, [forceLogoutWithReason, getStoredSessionId, user]);
 
@@ -314,6 +332,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             throw new Error("Authentication is currently unavailable.");
         }
         suppressSessionCheckRef.current = true;
+        // Issue 3 fix: Tell onAuthStateChanged to skip redundant Firestore read
+        skipNextAuthFetchRef.current = true;
         try {
             const result = await signInWithEmailAndPassword(auth, email, password);
             const userDocRef = doc(firestore, "users", result.user.uid);
@@ -329,19 +349,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 });
                 nextSessionId = "";
             } else {
-                const oneSignalId = await getOneSignalId();
-                const sessionId = (oneSignalId && typeof oneSignalId === "string" && oneSignalId.trim().length > 0) 
-                    ? oneSignalId 
-                    : generateSessionId();
+                // Issue 1 fix: Use generateSessionId immediately, update with OneSignal ID in background
+                const sessionId = generateSessionId();
                 persistSessionId(sessionId);
 
                 await updateDoc(userDocRef, {
                     activeSessionId: sessionId,
                 });
                 nextSessionId = sessionId;
+
+                // Fire-and-forget: try to update with OneSignal ID later (non-blocking)
+                const uid = result.user.uid;
+                setTimeout(async () => {
+                    try {
+                        const oneSignalId = await getOneSignalId();
+                        if (oneSignalId && typeof oneSignalId === "string" && oneSignalId.trim().length > 0 && oneSignalId !== sessionId) {
+                            persistSessionId(oneSignalId);
+                            await updateDoc(doc(firestore, "users", uid), {
+                                activeSessionId: oneSignalId,
+                            });
+                        }
+                    } catch (err) {
+                        console.warn("[AUTH] Background OneSignal session update failed:", err);
+                    }
+                }, 3000);
             }
 
             if (data) {
+                // Set role cookie eagerly from login data
+                try {
+                    const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
+                    document.cookie = `__role=${data.role || "student"}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax${isSecure ? "; Secure" : ""}`;
+                } catch { /* ignore */ }
                 setUserData({ ...data, uid: result.user.uid, activeSessionId: nextSessionId } as UserData);
             }
         } finally {

@@ -13,7 +13,6 @@ import FirebaseHealthPanel from "@/components/dev/FirebaseHealthPanel";
 import { Toaster } from "sonner";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import JsonLd, { schemas } from "@/components/seo/JsonLd";
-import { ONESIGNAL_APP_ID, ONESIGNAL_SAFARI_ID } from "@/lib/constants";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -177,54 +176,7 @@ export default function RootLayout({
             embedUrl: "https://www.youtube.com/embed/NEeRp3s9eoA"
         })} />
 
-        {/* Third-party Scripts */}
-        <Script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" strategy="afterInteractive" />
-        <Script id="onesignal-init" strategy="afterInteractive">
-          {`
-            window.OneSignalDeferred = window.OneSignalDeferred || [];
-            OneSignalDeferred.push(async function(OneSignal) {
-              try {
-                const isSecure = window.location.protocol === 'https:' || 
-                               window.location.hostname === 'localhost' || 
-                               window.location.hostname === '127.0.0.1';
-                               
-                if (isSecure) {
-                  await OneSignal.init({
-                    appId: "${ONESIGNAL_APP_ID}",
-                    safari_web_id: "${ONESIGNAL_SAFARI_ID}",
-                    notifyButton: { enable: false },
-                    allowLocalhostAsSecureOrigin: true
-                  });
-                  
-                  // Force refresh zombie clients running old code
-                  const CURRENT_DEPLOYMENT = "2026-05-07-v1";
-                  const storedVersion = localStorage.getItem("app_version");
-                  if (storedVersion !== CURRENT_DEPLOYMENT) {
-                    localStorage.setItem("app_version", CURRENT_DEPLOYMENT);
-                    // Small delay to allow localStorage to settle
-                    setTimeout(() => {
-                      window.location.reload();
-                    }, 500);
-                  }
-
-                  // Trigger permission prompt if not already granted
-                  if (OneSignal.Notifications.permission !== true) {
-                    // Slight delay to be less intrusive
-                    setTimeout(async () => {
-                      try {
-                        await OneSignal.Slidedown.promptPush();
-                      } catch (err) {
-                        console.error("Prompt error:", err);
-                      }
-                    }, 3000);
-                  }
-                }
-              } catch (e) {
-                console.error("OneSignal error:", e);
-              }
-            });
-          `}
-        </Script>
+        {/* OneSignal scripts moved to student dashboard layout (Issue 7) */}
 
         <AuthProvider>
           {underMaintenance ? <MaintenancePage /> : children}

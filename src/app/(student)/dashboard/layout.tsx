@@ -28,6 +28,7 @@ import { firestore } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { useCallback } from "react";
+import { ONESIGNAL_APP_ID, ONESIGNAL_SAFARI_ID } from "@/lib/constants";
 
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -65,6 +66,56 @@ export default function StudentDashboardLayout({
         window.addEventListener("student-sidebar:open", openSidebar);
         return () => window.removeEventListener("student-sidebar:open", openSidebar);
     }, []);
+
+    // Issue 7: OneSignal initialization — only for authenticated students
+    useEffect(() => {
+        if (!user) return;
+
+        const isSecure = window.location.protocol === 'https:' ||
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1';
+        if (!isSecure) return;
+
+        // Check if SDK already loaded
+        if (document.getElementById('onesignal-sdk')) return;
+
+        const script = document.createElement('script');
+        script.id = 'onesignal-sdk';
+        script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+        script.async = true;
+        script.onload = () => {
+            const w = window as any;
+            w.OneSignalDeferred = w.OneSignalDeferred || [];
+            w.OneSignalDeferred.push(async function(OneSignal: any) {
+                try {
+                    await OneSignal.init({
+                        appId: ONESIGNAL_APP_ID,
+                        safari_web_id: ONESIGNAL_SAFARI_ID,
+                        notifyButton: { enable: false },
+                        allowLocalhostAsSecureOrigin: true
+                    });
+
+                    // Force refresh zombie clients running old code
+                    const CURRENT_DEPLOYMENT = "2026-05-07-v1";
+                    const storedVersion = localStorage.getItem("app_version");
+                    if (storedVersion !== CURRENT_DEPLOYMENT) {
+                        localStorage.setItem("app_version", CURRENT_DEPLOYMENT);
+                        setTimeout(() => { window.location.reload(); }, 500);
+                    }
+
+                    // Trigger permission prompt if not already granted
+                    if (OneSignal.Notifications.permission !== true) {
+                        setTimeout(async () => {
+                            try { await OneSignal.Slidedown.promptPush(); } catch { /* ignore */ }
+                        }, 3000);
+                    }
+                } catch (e) {
+                    console.error("OneSignal error:", e);
+                }
+            });
+        };
+        document.head.appendChild(script);
+    }, [user]);
 
     // Check for notification dots — cached with 10-minute TTL
     const checkNotifications = useCallback(async () => {

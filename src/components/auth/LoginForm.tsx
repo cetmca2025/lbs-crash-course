@@ -57,17 +57,36 @@ export function LoginForm() {
             // Skip Firebase DB lookups if config is missing (Dev Bypass)
             if (hasValidConfig) {
                 if (!loginIdentifier.includes("@")) {
-                    const lookupRef = doc(firestore, "loginIdEmails", loginIdentifier);
-                    const docSnap = await Promise.race([
-                        getDoc(lookupRef),
-                        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Lookup timeout")), 4500))
-                    ]);
-                    if (docSnap.exists()) {
-                        actualEmail = docSnap.data().email;
+                    // Issue 2 fix: Check sessionStorage cache first to avoid Firestore re-reads on retries
+                    const cacheKey = `loginId_${loginIdentifier}`;
+                    const cachedEmail = sessionStorage.getItem(cacheKey);
+                    if (cachedEmail) {
+                        actualEmail = cachedEmail;
                     } else {
-                        toast.error("Invalid Login ID or User not found.");
-                        setLoading(false);
-                        return;
+                        const lookupRef = doc(firestore, "loginIdEmails", loginIdentifier);
+                        try {
+                            const docSnap = await Promise.race([
+                                getDoc(lookupRef),
+                                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Lookup timeout")), 4500))
+                            ]);
+                            if (docSnap.exists()) {
+                                actualEmail = docSnap.data().email;
+                                // Cache for this session so retries are instant
+                                try { sessionStorage.setItem(cacheKey, actualEmail); } catch { /* ignore */ }
+                            } else {
+                                toast.error("Invalid Login ID or User not found.");
+                                setLoading(false);
+                                return;
+                            }
+                        } catch (lookupErr: any) {
+                            if (lookupErr?.message === "Lookup timeout") {
+                                toast.error("Login ID lookup timed out. Please check your connection and try again.");
+                            } else {
+                                toast.error("Failed to verify Login ID. Please try again.");
+                            }
+                            setLoading(false);
+                            return;
+                        }
                     }
                 }
             } else if (process.env.NODE_ENV !== "development") {
