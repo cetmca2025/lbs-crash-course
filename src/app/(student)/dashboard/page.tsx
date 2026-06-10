@@ -32,13 +32,72 @@ function LeaderboardSummary() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch("/api/leaderboard/top3")
-            .then((r) => r.json())
-            .then((d) => {
-                setTop3(d.top3 || []);
-            })
-            .catch(() => setTop3([]))
-            .finally(() => setLoading(false));
+        const CACHE_KEY = "rankings_cache";
+        const CACHE_TIME_KEY = "rankings_cache_time";
+        const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+        const calculateTop3 = (data: any) => {
+            const quizAttempts = data.quizAttempts || [];
+            const allUsers = data.users || {};
+            const userMap = new Map<string, { userId: string; userName: string; score: number; testsTaken: number; lastSubmission: number }>();
+
+            quizAttempts.forEach((attempt: any) => {
+                if (!attempt.userId) return;
+                const user = allUsers[attempt.userId];
+                const userName = user?.name || attempt.userName || "Student";
+
+                const existing = userMap.get(attempt.userId) || {
+                    userId: attempt.userId,
+                    userName: userName,
+                    score: 0,
+                    testsTaken: 0,
+                    lastSubmission: 0
+                };
+                existing.score += (Number(attempt.score) || 0);
+                existing.testsTaken += 1;
+                existing.lastSubmission = Math.max(existing.lastSubmission, Number(attempt.submittedAt) || 0);
+                userMap.set(attempt.userId, existing);
+            });
+
+            const sorted = Array.from(userMap.values())
+                .sort((a, b) => {
+                    if (b.score !== a.score) return b.score - a.score;
+                    return a.lastSubmission - b.lastSubmission;
+                })
+                .slice(0, 3)
+                .map((e, i) => ({ ...e, rank: i + 1 }));
+
+            setTop3(sorted);
+        };
+
+        const fetchRankings = async () => {
+            try {
+                // Check cache first
+                const cached = sessionStorage.getItem(CACHE_KEY);
+                const cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
+                if (cached && cachedTime && (Date.now() - Number(cachedTime)) < CACHE_TTL) {
+                    calculateTop3(JSON.parse(cached));
+                    setLoading(false);
+                    return;
+                }
+
+                const res = await fetch("/api/rankings");
+                if (!res.ok) throw new Error("Failed to fetch");
+                const data = await res.json();
+
+                sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+
+                calculateTop3(data);
+            } catch (err) {
+                console.error("[DASHBOARD_LEADERBOARD] Error loading leaderboard summary:", err);
+                setTop3([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchRankings();
     }, []);
 
     const medals = ["🥇", "🥈", "🥉"];
@@ -108,7 +167,23 @@ export default function StudentDashboard() {
     const [progressMap, setProgressMap] = useState<Record<string, { completed?: boolean; timestamp?: number; duration?: number; updatedAt?: number }>>({});
 
     useEffect(() => {
+        const DASHBOARD_CACHE_KEY = "dashboard_data_cache";
+        const DASHBOARD_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
         const fetchDashboardData = async () => {
+            // Issue 5 fix: Check sessionStorage cache first
+            try {
+                const cached = sessionStorage.getItem(DASHBOARD_CACHE_KEY);
+                if (cached) {
+                    const { classes, anns, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < DASHBOARD_CACHE_TTL) {
+                        setUpcomingClasses(classes);
+                        setAnnouncements(anns);
+                        return;
+                    }
+                }
+            } catch { /* ignore cache errors */ }
+
             try {
                 const [liveSnap, annSnap] = await Promise.all([
                     getDocs(query(collection(firestore, "liveClasses"), orderBy("scheduledAt", "desc"), limit(3))),
@@ -128,6 +203,15 @@ export default function StudentDashboard() {
                     ...d.data(), id: d.id,
                 } as Announcement));
                 setAnnouncements(anns);
+
+                // Save to cache
+                try {
+                    sessionStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({
+                        classes,
+                        anns,
+                        timestamp: Date.now()
+                    }));
+                } catch { /* ignore */ }
             } catch (err) {
                 console.error("Failed to fetch dashboard data:", err);
             }

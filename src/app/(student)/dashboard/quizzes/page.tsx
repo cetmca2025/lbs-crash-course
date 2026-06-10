@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
-import { collection, getDocs, query, orderBy, where, addDoc } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, where, addDoc, limit } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import type { Quiz, QuizAttempt } from "@/lib/types";
 import { BookOpen, Clock, CheckCircle, Trophy, AlertCircle, Timer, PlayCircle, XCircle, Info, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
@@ -60,10 +60,9 @@ export default function QuizzesPage() {
                     }
                 });
                 setQuizzes(list);
-
                 let attemptMap: Record<string, QuizAttempt> = {};
                 if (userData?.uid) {
-                    const attRef = query(collection(firestore, "quizAttempts"), where("userId", "==", userData.uid));
+                    const attRef = query(collection(firestore, "quizAttempts"), where("userId", "==", userData.uid), limit(50));
                     const attSnap = await getDocs(attRef);
                     attSnap.forEach((doc) => {
                         const data = doc.data() as QuizAttempt;

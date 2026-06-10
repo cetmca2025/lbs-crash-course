@@ -13,8 +13,6 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { firestore } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
 
 import type { RankData } from "@/lib/types";
 
@@ -60,7 +58,7 @@ export default function RankingsPage() {
             if (!force) {
                 const cached = sessionStorage.getItem("rankings_cache");
                 const cachedTime = sessionStorage.getItem("rankings_cache_time");
-                if (cached && cachedTime && (Date.now() - Number(cachedTime)) < 5 * 60 * 1000) {
+                if (cached && cachedTime && (Date.now() - Number(cachedTime)) < 15 * 60 * 1000) {
                     const data = JSON.parse(cached);
                     setQuizzes(data.quizzes || {});
                     setMockTests(data.mockTests || {});

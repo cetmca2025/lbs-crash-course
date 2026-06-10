@@ -25,6 +25,10 @@ function serveProcessedData(data: any, mode: string, limitVal: number) {
             quizzes: data.quizzes,
             mockTests: data.mockTests,
             isPartial: true
+        }, {
+            headers: {
+                "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+            },
         });
     }
 
@@ -34,5 +38,9 @@ function serveProcessedData(data: any, mode: string, limitVal: number) {
         users: data.users,
         quizzes: data.quizzes,
         mockTests: data.mockTests
+    }, {
+        headers: {
+            "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        },
     });
 }

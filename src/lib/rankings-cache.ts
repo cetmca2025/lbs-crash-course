@@ -28,10 +28,10 @@ export async function getCachedRankingsData(bypassCache = false): Promise<Cached
     try {
         console.log("[RANKINGS_CACHE] Fetching fresh rankings data from Firestore...");
         const [quizzesSnap, mocksSnap, quizAttsSnap, mockAttsSnap] = await Promise.all([
-            adminFirestore.collection("quizzes").get(),
-            adminFirestore.collection("mockTests").get(),
-            adminFirestore.collection("quizAttempts").get(),
-            adminFirestore.collection("mockAttempts").get(),
+            adminFirestore.collection("quizzes").orderBy("createdAt", "desc").get(),
+            adminFirestore.collection("mockTests").orderBy("createdAt", "desc").get(),
+            adminFirestore.collection("quizAttempts").orderBy("submittedAt", "desc").limit(2000).get(),
+            adminFirestore.collection("mockAttempts").orderBy("submittedAt", "desc").limit(2000).get(),
         ]);
 
         const processTests = (snap: FirebaseFirestore.QuerySnapshot) => {
