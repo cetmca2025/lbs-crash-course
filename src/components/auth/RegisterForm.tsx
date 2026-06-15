@@ -33,9 +33,9 @@ import { submitRegistrationToSheet, savePendingRegistration } from "@/lib/regist
 const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL || "";
 
 const basePackageOptions = [
-    { value: "recorded_only", label: "Recorded Only - ₹249" },
-    { value: "live_only", label: "Live Only - ₹249" },
-    { value: "both", label: "Live + Recorded (Both) - ₹249" },
+    { value: "recorded_only", label: "Recorded Only - ₹199" },
+    { value: "live_only", label: "Live Only - ₹199" },
+    { value: "both", label: "Live + Recorded (Both) - ₹199" },
 ];
 
 export function RegisterForm() {
@@ -53,7 +53,7 @@ export function RegisterForm() {
     });
 
     const initialPackage = searchParams.get("package") || "";
-    const PACKAGE_PRICES: Record<string, number> = { recorded_only: 249, live_only: 249, both: 249 };
+    const PACKAGE_PRICES: Record<string, number> = { recorded_only: 199, live_only: 199, both: 199 };
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -338,10 +338,10 @@ export function RegisterForm() {
                                             <Image
                                                 src={
                                                     formData.selectedPackage === "live_only"
-                                                        ? "/qr/live-only-qr.jpeg"
+                                                        ? "/qr/live-only-qr.png"
                                                         : formData.selectedPackage === "recorded_only"
-                                                            ? "/qr/record-only-qr.jpeg"
-                                                            : "/qr/combo-qr.jpeg"
+                                                            ? "/qr/record-only-qr.png"
+                                                            : "/qr/combo-qr.png"
                                                 }
                                                 alt={`QR Code for ${selectedPackageLabel}`}
                                                 width={192}
