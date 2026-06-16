@@ -51,6 +51,10 @@ function RecordingPlayerDialog({ open, onOpenChange, title, subject, url, userEm
     const hudTimerRef = useRef<number | null>(null);
     const [fsOverlayVisible, setFsOverlayVisible] = useState<boolean>(false);
     const fsOverlayTimerRef = useRef<number | null>(null);
+    // Double-tap skip state
+    const [skipFeedback, setSkipFeedback] = useState<{ side: 'left' | 'right'; key: number } | null>(null);
+    const lastTapRef = useRef<{ time: number; side: 'left' | 'right' } | null>(null);
+    const tapTimerRef = useRef<number | null>(null);
 
 
     const showFsOverlay = () => {
@@ -193,6 +197,10 @@ function RecordingPlayerDialog({ open, onOpenChange, title, subject, url, userEm
                 window.clearTimeout(fsOverlayTimerRef.current);
                 fsOverlayTimerRef.current = null;
             }
+            if (tapTimerRef.current) {
+                window.clearTimeout(tapTimerRef.current);
+                tapTimerRef.current = null;
+            }
         };
     }, [duration]);
     
@@ -327,6 +335,13 @@ function RecordingPlayerDialog({ open, onOpenChange, title, subject, url, userEm
         };
     }, [open]);
 
+    // Auto-clear skip feedback after animation completes
+    useEffect(() => {
+        if (!skipFeedback) return;
+        const t = window.setTimeout(() => setSkipFeedback(null), 700);
+        return () => window.clearTimeout(t);
+    }, [skipFeedback]);
+
     return (
         <Dialog
             open={open}
@@ -459,12 +474,79 @@ function RecordingPlayerDialog({ open, onOpenChange, title, subject, url, userEm
                             frameBorder="0"
                         />
                     </div>
+                    {/* Double-Tap Skip Interaction Layer */}
                     <div
-                        className="absolute inset-0 z-20"
+                        className="absolute inset-0 z-20 flex"
                         style={{ background: "transparent" }}
                         onContextMenu={(e) => e.preventDefault()}
-                        onClick={() => { if (isFullscreen) showFsOverlay(); }}
-                    />
+                    >
+                        {/* Left half — double-tap to rewind 10s */}
+                        <div
+                            className="flex-1 h-full relative"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const now = Date.now();
+                                const last = lastTapRef.current;
+                                if (last && last.side === 'left' && now - last.time < 350) {
+                                    if (tapTimerRef.current) { window.clearTimeout(tapTimerRef.current); tapTimerRef.current = null; }
+                                    lastTapRef.current = null;
+                                    seekBy(-10);
+                                    setSkipFeedback({ side: 'left', key: now });
+                                    if (isFullscreen) showFsOverlay();
+                                } else {
+                                    lastTapRef.current = { time: now, side: 'left' };
+                                    if (tapTimerRef.current) window.clearTimeout(tapTimerRef.current);
+                                    tapTimerRef.current = window.setTimeout(() => {
+                                        lastTapRef.current = null;
+                                        tapTimerRef.current = null;
+                                        if (isFullscreen) showFsOverlay();
+                                    }, 350);
+                                }
+                            }}
+                        >
+                            {skipFeedback?.side === 'left' && (
+                                <div key={skipFeedback.key} className="absolute inset-0 flex items-center justify-center pointer-events-none animate-tap-feedback">
+                                    <div className="flex flex-col items-center gap-1">
+                                        <SkipBack className="h-8 w-8 sm:h-10 sm:w-10 text-white drop-shadow-lg" />
+                                        <span className="text-white text-sm sm:text-base font-bold drop-shadow-lg">10s</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        {/* Right half — double-tap to skip forward 10s */}
+                        <div
+                            className="flex-1 h-full relative"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const now = Date.now();
+                                const last = lastTapRef.current;
+                                if (last && last.side === 'right' && now - last.time < 350) {
+                                    if (tapTimerRef.current) { window.clearTimeout(tapTimerRef.current); tapTimerRef.current = null; }
+                                    lastTapRef.current = null;
+                                    seekBy(10);
+                                    setSkipFeedback({ side: 'right', key: now });
+                                    if (isFullscreen) showFsOverlay();
+                                } else {
+                                    lastTapRef.current = { time: now, side: 'right' };
+                                    if (tapTimerRef.current) window.clearTimeout(tapTimerRef.current);
+                                    tapTimerRef.current = window.setTimeout(() => {
+                                        lastTapRef.current = null;
+                                        tapTimerRef.current = null;
+                                        if (isFullscreen) showFsOverlay();
+                                    }, 350);
+                                }
+                            }}
+                        >
+                            {skipFeedback?.side === 'right' && (
+                                <div key={skipFeedback.key} className="absolute inset-0 flex items-center justify-center pointer-events-none animate-tap-feedback">
+                                    <div className="flex flex-col items-center gap-1">
+                                        <SkipForward className="h-8 w-8 sm:h-10 sm:w-10 text-white drop-shadow-lg" />
+                                        <span className="text-white text-sm sm:text-base font-bold drop-shadow-lg">10s</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                     {isFullscreen && hudMask && (
                         <>
                             <div className="absolute top-0 left-0 right-0 h-12 z-25 pointer-events-none bg-linear-to-b from-black/60 to-transparent" />

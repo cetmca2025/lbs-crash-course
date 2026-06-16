@@ -73,6 +73,10 @@ function VideoPlayerDialog({ video, open, onOpenChange }: { video: RecordedClass
     const hudTimerRef = useRef<number | null>(null);
     const [fsOverlayVisible, setFsOverlayVisible] = useState<boolean>(false);
     const fsOverlayTimerRef = useRef<number | null>(null);
+    // Double-tap skip state
+    const [skipFeedback, setSkipFeedback] = useState<{ side: 'left' | 'right'; key: number } | null>(null);
+    const lastTapRef = useRef<{ time: number; side: 'left' | 'right' } | null>(null);
+    const tapTimerRef = useRef<number | null>(null);
     const showFsOverlay = () => {
         setFsOverlayVisible(true);
         if (fsOverlayTimerRef.current) { window.clearTimeout(fsOverlayTimerRef.current); fsOverlayTimerRef.current = null; }
@@ -197,6 +201,7 @@ function VideoPlayerDialog({ video, open, onOpenChange }: { video: RecordedClass
             window.clearTimeout(failSafeTimer);
             if (hudTimerRef.current) { window.clearTimeout(hudTimerRef.current); hudTimerRef.current = null; }
             if (fsOverlayTimerRef.current) { window.clearTimeout(fsOverlayTimerRef.current); fsOverlayTimerRef.current = null; }
+            if (tapTimerRef.current) { window.clearTimeout(tapTimerRef.current); tapTimerRef.current = null; }
         };
     }, []);  // No deps — message handler uses refs internally
     
@@ -400,6 +405,13 @@ function VideoPlayerDialog({ video, open, onOpenChange }: { video: RecordedClass
             setIsFullscreen(false);
         }
     }, [open]);
+
+    // Auto-clear skip feedback after animation completes
+    useEffect(() => {
+        if (!skipFeedback) return;
+        const t = window.setTimeout(() => setSkipFeedback(null), 700);
+        return () => window.clearTimeout(t);
+    }, [skipFeedback]);
 
     // Player Keyboard Shortcuts
     useEffect(() => {
@@ -622,12 +634,81 @@ function VideoPlayerDialog({ video, open, onOpenChange }: { video: RecordedClass
                         />
                     </div>
                     
-                    {/* Interaction Layer */}
+                    {/* Double-Tap Skip Interaction Layer */}
                     <div
-                        className="absolute inset-0 z-20"
+                        className="absolute inset-0 z-20 flex"
                         style={{ background: "transparent" }}
-                        onClick={() => showFsOverlay()}
-                    />
+                        onContextMenu={(e) => e.preventDefault()}
+                    >
+                        {/* Left half — double-tap to rewind 10s */}
+                        <div
+                            className="flex-1 h-full relative"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const now = Date.now();
+                                const last = lastTapRef.current;
+                                if (last && last.side === 'left' && now - last.time < 350) {
+                                    // Double-tap detected — rewind 10s
+                                    if (tapTimerRef.current) { window.clearTimeout(tapTimerRef.current); tapTimerRef.current = null; }
+                                    lastTapRef.current = null;
+                                    seekBy(-10);
+                                    setSkipFeedback({ side: 'left', key: now });
+                                    showFsOverlay();
+                                } else {
+                                    lastTapRef.current = { time: now, side: 'left' };
+                                    if (tapTimerRef.current) window.clearTimeout(tapTimerRef.current);
+                                    tapTimerRef.current = window.setTimeout(() => {
+                                        lastTapRef.current = null;
+                                        tapTimerRef.current = null;
+                                        showFsOverlay();
+                                    }, 350);
+                                }
+                            }}
+                        >
+                            {skipFeedback?.side === 'left' && (
+                                <div key={skipFeedback.key} className="absolute inset-0 flex items-center justify-center pointer-events-none animate-tap-feedback">
+                                    <div className="flex flex-col items-center gap-1">
+                                        <SkipBack className="h-8 w-8 sm:h-10 sm:w-10 text-white drop-shadow-lg" />
+                                        <span className="text-white text-sm sm:text-base font-bold drop-shadow-lg">10s</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        {/* Right half — double-tap to skip forward 10s */}
+                        <div
+                            className="flex-1 h-full relative"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const now = Date.now();
+                                const last = lastTapRef.current;
+                                if (last && last.side === 'right' && now - last.time < 350) {
+                                    // Double-tap detected — skip forward 10s
+                                    if (tapTimerRef.current) { window.clearTimeout(tapTimerRef.current); tapTimerRef.current = null; }
+                                    lastTapRef.current = null;
+                                    seekBy(10);
+                                    setSkipFeedback({ side: 'right', key: now });
+                                    showFsOverlay();
+                                } else {
+                                    lastTapRef.current = { time: now, side: 'right' };
+                                    if (tapTimerRef.current) window.clearTimeout(tapTimerRef.current);
+                                    tapTimerRef.current = window.setTimeout(() => {
+                                        lastTapRef.current = null;
+                                        tapTimerRef.current = null;
+                                        showFsOverlay();
+                                    }, 350);
+                                }
+                            }}
+                        >
+                            {skipFeedback?.side === 'right' && (
+                                <div key={skipFeedback.key} className="absolute inset-0 flex items-center justify-center pointer-events-none animate-tap-feedback">
+                                    <div className="flex flex-col items-center gap-1">
+                                        <SkipForward className="h-8 w-8 sm:h-10 sm:w-10 text-white drop-shadow-lg" />
+                                        <span className="text-white text-sm sm:text-base font-bold drop-shadow-lg">10s</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
                     {/* Progress Bar & Controls Overlay (Only visible on hover or mobile touch) */}
                     <div className={`absolute inset-x-0 bottom-0 z-50 bg-linear-to-t from-black/80 via-black/40 to-transparent transition-all duration-300 ${isFullscreen ? (fsOverlayVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none') : (fsOverlayVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100')}`}

@@ -342,6 +342,53 @@ html.ios-fs-active body {
   animation: float 3s ease-in-out infinite;
 }
 
+/* Double-tap skip feedback */
+@keyframes tap-feedback {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes tap-ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.35;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.animate-tap-feedback {
+  animation: tap-feedback 0.6s ease-out forwards;
+}
+
+.animate-tap-feedback::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  animation: tap-ripple 0.6s ease-out forwards;
+}
+
 /* Shimmer skeleton loading */
 .shimmer {
   background: linear-gradient(90deg, var(--muted) 25%, var(--secondary) 50%, var(--muted) 75%);
