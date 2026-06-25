@@ -5,11 +5,29 @@ export async function GET() {
     try {
         const data = await getCachedRankingsData();
 
-        // Aggregate quiz scores per user (matching default Quizzes tab on Leaderboard)
-        const userMap = new Map<string, { userId: string; userName: string; score: number; testsTaken: number; lastSubmission: number }>();
-
+        // Step 1: Deduplicate quiz attempts per (userId, quizId) — keep best score per user per quiz
+        const bestPerUserQuiz = new Map<string, typeof data.quizAttempts[0]>();
         data.quizAttempts.forEach(attempt => {
             if (!attempt.userId) return;
+            const compositeKey = `${attempt.userId}__${attempt.quizId || ""}`;
+            const aScore = Number(attempt.score) || 0;
+            const aTime = Number(attempt.submittedAt) || 0;
+            const existing = bestPerUserQuiz.get(compositeKey);
+            if (!existing) {
+                bestPerUserQuiz.set(compositeKey, attempt);
+            } else {
+                const exScore = Number(existing.score) || 0;
+                const exTime = Number(existing.submittedAt) || 0;
+                if (aScore > exScore || (aScore === exScore && aTime < exTime)) {
+                    bestPerUserQuiz.set(compositeKey, attempt);
+                }
+            }
+        });
+
+        // Step 2: Aggregate deduplicated best scores per user across quizzes
+        const userMap = new Map<string, { userId: string; userName: string; score: number; testsTaken: number; lastSubmission: number }>();
+
+        bestPerUserQuiz.forEach(attempt => {
             const existing = userMap.get(attempt.userId) || {
                 userId: attempt.userId,
                 userName: attempt.userName || "Student",

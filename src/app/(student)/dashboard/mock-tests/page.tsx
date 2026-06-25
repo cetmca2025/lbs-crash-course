@@ -102,7 +102,13 @@ export default function MockTestsPage() {
                     const attSnap = await getDocs(attRef);
                     attSnap.forEach((child) => {
                         const data = child.data();
-                        attemptMap[data.mockTestId || data.quizId] = { ...data, id: child.id } as QuizAttempt;
+                        const testKey = data.mockTestId || data.quizId;
+                        const incoming = { ...data, id: child.id } as QuizAttempt;
+                        const existing = attemptMap[testKey];
+                        // Keep the attempt with the highest score (tie-break: latest submission)
+                        if (!existing || (incoming.score > existing.score) || (incoming.score === existing.score && incoming.submittedAt > existing.submittedAt)) {
+                            attemptMap[testKey] = incoming;
+                        }
                     });
                     setMyAttempts(attemptMap);
                 }
