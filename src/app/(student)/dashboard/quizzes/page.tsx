@@ -66,7 +66,12 @@ export default function QuizzesPage() {
                     const attSnap = await getDocs(attRef);
                     attSnap.forEach((doc) => {
                         const data = doc.data() as QuizAttempt;
-                        attemptMap[data.quizId] = { ...data, id: doc.id };
+                        const incoming = { ...data, id: doc.id };
+                        const existing = attemptMap[data.quizId];
+                        // Keep the attempt with the highest score (tie-break: latest submission)
+                        if (!existing || (incoming.score > existing.score) || (incoming.score === existing.score && incoming.submittedAt > existing.submittedAt)) {
+                            attemptMap[data.quizId] = incoming;
+                        }
                     });
                     setMyAttempts(attemptMap);
                 }

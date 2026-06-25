@@ -117,15 +117,37 @@ export default function RankingsPage() {
         return () => clearTimeout(timer);
     }, []);
 
-    // Compute Individual Rankings for each test
+    // Compute Individual Rankings for each test (deduplicated per user — best score only)
     const individualRankings = useMemo(() => {
         const tests = tab === "quizzes" ? quizzes : mockTests;
         const attempts = tab === "quizzes" ? allQuizAttempts : allMockAttempts;
         const testIdKey = tab === "quizzes" ? "quizId" : "mockTestId";
 
         return Object.values(tests).map(test => {
-            const testAttempts = attempts
-                .filter(a => a[testIdKey] === test.id || (tab === "mockTests" && a.quizId === test.id))
+            // Gather all attempts for this test
+            const rawAttempts = attempts
+                .filter(a => a[testIdKey] === test.id || (tab === "mockTests" && a.quizId === test.id));
+
+            // Deduplicate per user: keep the best score per user (tie-break: earliest submission)
+            const bestByUser = new Map<string, any>();
+            rawAttempts.forEach(a => {
+                if (!a.userId) return;
+                const existing = bestByUser.get(a.userId);
+                const aScore = Number(a.score) || 0;
+                const aTime = Number(a.submittedAt) || 0;
+                if (!existing) {
+                    bestByUser.set(a.userId, a);
+                } else {
+                    const exScore = Number(existing.score) || 0;
+                    const exTime = Number(existing.submittedAt) || 0;
+                    // Higher score wins; if tied, earlier submission wins
+                    if (aScore > exScore || (aScore === exScore && aTime < exTime)) {
+                        bestByUser.set(a.userId, a);
+                    }
+                }
+            });
+
+            const testAttempts = Array.from(bestByUser.values())
                 .sort((a, b) => {
                     const scoreA = Number(a.score) || 0;
                     const scoreB = Number(b.score) || 0;
@@ -150,13 +172,34 @@ export default function RankingsPage() {
         }).sort((a, b) => b.participants - a.participants); // Show most popular tests first
     }, [tab, quizzes, mockTests, allQuizAttempts, allMockAttempts, allUsers]);
 
-    // Global Rankings Computation
+    // Global Rankings Computation (deduplicated: best score per user per test, then aggregated)
     const globalRankings = useMemo(() => {
         const sourceAttempts = tab === "quizzes" ? allQuizAttempts : allMockAttempts;
-        const userMap = new Map<string, GlobalRankingEntry & { lastSubmission: number }>();
+        const testIdKey = tab === "quizzes" ? "quizId" : "mockTestId";
 
+        // Step 1: Deduplicate per (userId, testId) — keep only the best attempt per user per test
+        const bestPerUserTest = new Map<string, any>();
         sourceAttempts.forEach(attempt => {
             if (!attempt.userId) return;
+            const testId = attempt[testIdKey] || attempt.quizId || "";
+            const compositeKey = `${attempt.userId}__${testId}`;
+            const aScore = Number(attempt.score) || 0;
+            const aTime = Number(attempt.submittedAt) || 0;
+            const existing = bestPerUserTest.get(compositeKey);
+            if (!existing) {
+                bestPerUserTest.set(compositeKey, attempt);
+            } else {
+                const exScore = Number(existing.score) || 0;
+                const exTime = Number(existing.submittedAt) || 0;
+                if (aScore > exScore || (aScore === exScore && aTime < exTime)) {
+                    bestPerUserTest.set(compositeKey, attempt);
+                }
+            }
+        });
+
+        // Step 2: Aggregate the deduplicated best attempts per user across all tests
+        const userMap = new Map<string, GlobalRankingEntry & { lastSubmission: number }>();
+        bestPerUserTest.forEach(attempt => {
             const user = allUsers[attempt.userId];
             const userName = user?.name || attempt.userName || "Student";
             
@@ -299,7 +342,7 @@ export default function RankingsPage() {
                             const styles = getRankStyles(entry.rank);
                             const isMe = entry.userId === userData?.uid;
                             return (
-                                <div key={entry.userId} className={cn("flex items-center gap-3 sm:gap-4 p-3 sm:p-4 sm:px-8 transition-all hover:bg-muted/30", isMe && "bg-primary/5")}>
+                                <div key={`${entry.userId}-${entry.id || entry.rank}`} className={cn("flex items-center gap-3 sm:gap-4 p-3 sm:p-4 sm:px-8 transition-all hover:bg-muted/30", isMe && "bg-primary/5")}>
                                     <div className={cn("flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center shrink-0 rounded-xl sm:rounded-2xl border-2 transition-transform", styles.bg, isMe && "scale-105 sm:scale-110 shadow-md ring-2 sm:ring-4 ring-primary/10")}>
                                         {styles.icon}
                                     </div>
