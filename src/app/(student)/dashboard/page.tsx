@@ -39,10 +39,30 @@ function LeaderboardSummary() {
         const calculateTop3 = (data: any) => {
             const quizAttempts = data.quizAttempts || [];
             const allUsers = data.users || {};
-            const userMap = new Map<string, { userId: string; userName: string; score: number; testsTaken: number; lastSubmission: number }>();
 
+            // Step 1: Deduplicate quiz attempts per (userId, quizId) — keep best score per user per quiz
+            const bestPerUserQuiz = new Map<string, any>();
             quizAttempts.forEach((attempt: any) => {
                 if (!attempt.userId) return;
+                const compositeKey = `${attempt.userId}__${attempt.quizId || ""}`;
+                const aScore = Number(attempt.score) || 0;
+                const aTime = Number(attempt.submittedAt) || 0;
+                const existing = bestPerUserQuiz.get(compositeKey);
+                if (!existing) {
+                    bestPerUserQuiz.set(compositeKey, attempt);
+                } else {
+                    const exScore = Number(existing.score) || 0;
+                    const exTime = Number(existing.submittedAt) || 0;
+                    if (aScore > exScore || (aScore === exScore && aTime < exTime)) {
+                        bestPerUserQuiz.set(compositeKey, attempt);
+                    }
+                }
+            });
+
+            // Step 2: Aggregate deduplicated best scores per user across quizzes
+            const userMap = new Map<string, { userId: string; userName: string; score: number; testsTaken: number; lastSubmission: number }>();
+
+            bestPerUserQuiz.forEach((attempt: any) => {
                 const user = allUsers[attempt.userId];
                 const userName = user?.name || attempt.userName || "Student";
 
