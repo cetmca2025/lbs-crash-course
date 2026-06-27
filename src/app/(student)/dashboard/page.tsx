@@ -333,7 +333,7 @@ export default function StudentDashboard() {
                         
                         <div className="mt-4 space-y-4 text-sm sm:text-base text-muted-foreground">
                             <p className="font-medium text-foreground/90">
-                                Tomorrow is your opportunity to turn months of hard work into success. Stay calm, trust your preparation, and give your best in every question.
+                                Today is your opportunity to turn months of hard work into success. Stay calm, trust your preparation, and give your best in every question.
                             </p>
 
                             <div className="p-4 rounded-xl border border-amber-500/25 bg-amber-500/5 text-amber-600 dark:text-amber-400 text-xs sm:text-sm">
