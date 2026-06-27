@@ -327,26 +327,24 @@ export default function StudentDashboard() {
                 <div className="lg:col-span-2 relative overflow-hidden rounded-2xl border border-border bg-card p-6 sm:p-8">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-bl from-primary/10 via-transparent to-transparent rounded-full blur-2xl" />
                     <div className="relative">
-                        <h1 className="text-2xl sm:text-3xl font-bold">
-                            Welcome back, <span className="gradient-text">{userData?.name?.split(" ")[0]}</span> 👋
+                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
+                            All the Best for Your <span className="gradient-text">LBS MCA Entrance Exam.</span>
                         </h1>
-                        <p className="mt-2 text-muted-foreground max-w-lg">
-                            Continue your MCA entrance preparation. Stay consistent and track your progress.
-                        </p>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                            {userData?.is_live && (
-                                <span className="inline-flex items-center rounded-full bg-blue-500/10 border border-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-400">
-                                    <Video className="h-3 w-3 mr-1.5" />
-                                    Live Access
-                                </span>
-                            )}
-                            {userData?.is_record_class && (
-                                <span className="inline-flex items-center rounded-full bg-violet-500/10 border border-violet-500/20 px-3 py-1 text-xs font-semibold text-violet-400">
-                                    <BookOpen className="h-3 w-3 mr-1.5" />
-                                    Recorded Access
-                                </span>
-                            )}
+                        
+                        <div className="mt-4 space-y-4 text-sm sm:text-base text-muted-foreground">
+                            <p className="font-medium text-foreground/90">
+                                Tomorrow is your opportunity to turn months of hard work into success. Stay calm, trust your preparation, and give your best in every question.
+                            </p>
+
+                            <div className="p-4 rounded-xl border border-amber-500/25 bg-amber-500/5 text-amber-600 dark:text-amber-400 text-xs sm:text-sm">
+                                <span className="font-bold">💡 Remember:</span> There is <span className="font-bold underline decoration-amber-500/40">no negative marking</span>, so don't leave any question unanswered. If you're unsure about an answer, make your best educated guess—every question is an opportunity to score.
+                            </div>
+                            
+                            <div className="pt-4 border-t border-border flex justify-between items-center text-xs text-muted-foreground">
+                                <span className="font-bold text-primary bg-primary/10 border border-primary/20 rounded-md px-2 py-0.5">by CETMCA-27</span>
+                            </div>
                         </div>
+                      
                     </div>
                 </div>
                 <LeaderboardSummary />
