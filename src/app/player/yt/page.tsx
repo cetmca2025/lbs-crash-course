@@ -55,6 +55,7 @@ function YTProxyInner() {
         height: "100%",
         width: "100%",
         videoId: vid,
+        host: "https://www.youtube-nocookie.com",
         playerVars: {
           controls: 0,
           rel: 0,
