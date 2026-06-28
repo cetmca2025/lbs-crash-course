@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth-context";
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, doc, getDoc, setDoc, updateDoc, increment } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import type { LiveClass, Announcement } from "@/lib/types";
 import recordingsData from "@/data/recordings.json";
@@ -178,6 +178,195 @@ function LeaderboardSummary() {
     );
 }
 
+function ExamPoll() {
+    const { user } = useAuth();
+    const [votedOption, setVotedOption] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [pollResults, setPollResults] = useState<{ easy: number; medium: number; hard: number }>({ easy: 0, medium: 0, hard: 0 });
+    const [totalVotes, setTotalVotes] = useState(0);
+
+    const loadPollData = async () => {
+        try {
+            // Load user's vote locally
+            const localVote = localStorage.getItem("lbs_exam_poll_vote");
+            setVotedOption(localVote);
+
+            // Load aggregate votes from a single document
+            const docRef = doc(firestore, "polls", "lbsExam");
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const results = {
+                    easy: Math.max(0, Number(data.easy) || 0),
+                    medium: Math.max(0, Number(data.medium) || 0),
+                    hard: Math.max(0, Number(data.hard) || 0)
+                };
+                setPollResults(results);
+                setTotalVotes(results.easy + results.medium + results.hard);
+            } else {
+                setPollResults({ easy: 0, medium: 0, hard: 0 });
+                setTotalVotes(0);
+            }
+        } catch (err) {
+            console.error("Error loading poll data:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadPollData();
+    }, [user?.uid]);
+
+    const handleVote = async (option: "easy" | "medium" | "hard") => {
+        if (submitting) return;
+        
+        const oldOption = localStorage.getItem("lbs_exam_poll_vote") as "easy" | "medium" | "hard" | null;
+        if (oldOption === option) return;
+
+        setSubmitting(true);
+        try {
+            const docRef = doc(firestore, "polls", "lbsExam");
+            
+            // Check if document exists, if not initialize it
+            const docSnap = await getDoc(docRef);
+            if (!docSnap.exists()) {
+                await setDoc(docRef, { easy: 0, medium: 0, hard: 0 });
+            }
+
+            const updates: Record<string, any> = {};
+            if (oldOption) {
+                updates[oldOption] = increment(-1);
+            }
+            updates[option] = increment(1);
+
+            await updateDoc(docRef, updates);
+
+            localStorage.setItem("lbs_exam_poll_vote", option);
+            setVotedOption(option);
+            
+            // Refresh results
+            await loadPollData();
+        } catch (err) {
+            console.error("Error submitting vote:", err);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const getPercentage = (count: number) => {
+        if (totalVotes === 0) return 0;
+        return Math.round((count / totalVotes) * 100);
+    };
+
+    if (loading) {
+        return (
+            <Card className="border border-border bg-card">
+                <CardContent className="p-6 space-y-4">
+                    <Skeleton className="h-6 w-48" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </CardContent>
+            </Card>
+        );
+    }
+
+    const options = [
+        { id: "easy", label: "Easy", desc: "score 90 above", color: "bg-emerald-500", hoverColor: "hover:border-emerald-500/30 hover:bg-emerald-500/5", activeBorder: "border-emerald-500" },
+        { id: "medium", label: "Medium", desc: "score 65-89", color: "bg-amber-500", hoverColor: "hover:border-amber-500/30 hover:bg-amber-500/5", activeBorder: "border-amber-500" },
+        { id: "hard", label: "Hard", desc: "below 60", color: "bg-rose-500", hoverColor: "hover:border-rose-500/30 hover:bg-rose-500/5", activeBorder: "border-rose-500" }
+    ] as const;
+
+    return (
+        <Card className="border border-border bg-card shadow-sm overflow-hidden relative animate-fade-in">
+            <div className="absolute top-0 left-0 w-32 h-32 bg-linear-to-br from-primary/5 via-transparent to-transparent rounded-full blur-xl pointer-events-none" />
+            <CardHeader className="pb-3 relative">
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2 font-bold">
+                    <span className="text-xl">📊</span> How was the LBS MCA Entrance Exam?
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                    {!votedOption 
+                        ? "Cast your vote to see what other aspirants think about the exam difficulty." 
+                        : "You've voted! Tap any other option to change your vote."}
+                </p>
+            </CardHeader>
+            <CardContent className="space-y-3 relative">
+                {options.map((opt) => {
+                    const count = pollResults[opt.id];
+                    const pct = getPercentage(count);
+                    const isSelected = votedOption === opt.id;
+                    
+                    return (
+                        <button
+                            key={opt.id}
+                            disabled={submitting}
+                            onClick={() => handleVote(opt.id)}
+                            className={`w-full relative p-4 rounded-xl border transition-all overflow-hidden text-left group ${
+                                isSelected 
+                                    ? `${opt.activeBorder} bg-primary/5 shadow-sm` 
+                                    : "border-border bg-card/30 hover:border-primary/20 hover:bg-card/50"
+                            } hover:scale-[1.01] active:scale-[0.99]`}
+                        >
+                            {/* Progress Bar background */}
+                            {votedOption && (
+                                <div
+                                    className={`absolute top-0 left-0 h-full opacity-[0.08] ${opt.color} transition-all duration-200`}
+                                    style={{ width: `${pct}%` }}
+                                />
+                            )}
+                            
+                            <div className="relative flex justify-between items-center text-sm font-medium z-10">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-foreground group-hover:text-primary transition-colors">{opt.label}</span>
+                                    <span className="text-xs text-muted-foreground">({opt.desc})</span>
+                                    {isSelected && (
+                                        <Badge variant="outline" className="text-[10px] font-semibold bg-primary/10 text-primary border-primary/20 leading-none py-0.5 px-1.5 ml-2">
+                                            Your Vote
+                                        </Badge>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    {votedOption ? (
+                                        <>
+                                            <span className="text-xs text-muted-foreground">{count} {count === 1 ? "vote" : "votes"}</span>
+                                            <span className="font-bold font-mono text-foreground">{pct}%</span>
+                                        </>
+                                    ) : (
+                                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform group-hover:text-primary" />
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {/* Visual representation bar */}
+                            {votedOption && (
+                                <div className="relative mt-2 w-full h-1.5 rounded-full bg-muted/30 overflow-hidden z-10">
+                                    <div className={`h-full rounded-full ${opt.color} transition-all duration-200`} style={{ width: `${pct}%` }} />
+                                </div>
+                            )}
+                        </button>
+                    );
+                })}
+                
+                {votedOption && (
+                    <div className="pt-2 text-center text-[11px] text-muted-foreground flex items-center justify-center gap-1.5">
+                        <span>Total votes: <strong>{totalVotes}</strong></span>
+                        <span>•</span>
+                        <button 
+                            onClick={loadPollData}
+                            className="hover:underline text-primary font-medium"
+                        >
+                            Refresh Results
+                        </button>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
 
 export default function StudentDashboard() {
     const { userData } = useAuth();
@@ -324,28 +513,32 @@ export default function StudentDashboard() {
         <div className="animate-fade-in space-y-6">
             {/* Top Row: Welcome & Leaderboard */}
             <div className="grid lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 relative overflow-hidden rounded-2xl border border-border bg-card p-6 sm:p-8">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-bl from-primary/10 via-transparent to-transparent rounded-full blur-2xl" />
-                    <div className="relative">
-                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
-                            All the Best for Your <span className="gradient-text">LBS MCA Entrance Exam.</span>
-                        </h1>
-                        
-                        <div className="mt-4 space-y-4 text-sm sm:text-base text-muted-foreground">
-                            <p className="font-medium text-foreground/90">
-                                Today is your opportunity to turn months of hard work into success. Stay calm, trust your preparation, and give your best in every question.
-                            </p>
-
-                            <div className="p-4 rounded-xl border border-amber-500/25 bg-amber-500/5 text-amber-600 dark:text-amber-400 text-xs sm:text-sm">
-                                <span className="font-bold">💡 Remember:</span> There is <span className="font-bold underline decoration-amber-500/40">no negative marking</span>, so don't leave any question unanswered. If you're unsure about an answer, make your best educated guess—every question is an opportunity to score.
-                            </div>
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 sm:p-8">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-bl from-primary/10 via-transparent to-transparent rounded-full blur-2xl" />
+                        <div className="relative">
+                            <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
+                                All the Best for Your <span className="gradient-text">LBS MCA Entrance Exam.</span>
+                            </h1>
                             
-                            <div className="pt-4 border-t border-border flex justify-between items-center text-xs text-muted-foreground">
-                                <span className="font-bold text-primary bg-primary/10 border border-primary/20 rounded-md px-2 py-0.5">by CETMCA-27</span>
+                            <div className="mt-4 space-y-4 text-sm sm:text-base text-muted-foreground">
+                                <p className="font-medium text-foreground/90">
+                                    Today is your opportunity to turn months of hard work into success. Stay calm, trust your preparation, and give your best in every question.
+                                </p>
+
+                                <div className="p-4 rounded-xl border border-amber-500/25 bg-amber-500/5 text-amber-600 dark:text-amber-400 text-xs sm:text-sm">
+                                    <span className="font-bold">💡 Remember:</span> There is <span className="font-bold underline decoration-amber-500/40">no negative marking</span>, so don't leave any question unanswered. If you're unsure about an answer, make your best educated guess—every question is an opportunity to score.
+                                </div>
+                                
+                                <div className="pt-4 border-t border-border flex justify-between items-center text-xs text-muted-foreground">
+                                    <span className="font-bold text-primary bg-primary/10 border border-primary/20 rounded-md px-2 py-0.5">by CETMCA-27</span>
+                                </div>
                             </div>
+                          
                         </div>
-                      
                     </div>
+
+                    <ExamPoll />
                 </div>
                 <LeaderboardSummary />
             </div>
