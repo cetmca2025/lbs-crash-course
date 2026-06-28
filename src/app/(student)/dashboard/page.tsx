@@ -518,23 +518,35 @@ export default function StudentDashboard() {
                         <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-bl from-primary/10 via-transparent to-transparent rounded-full blur-2xl" />
                         <div className="relative">
                             <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
-                                All the Best for Your <span className="gradient-text">LBS MCA Entrance Exam.</span>
+                                Thank You to All Our <span className="gradient-text">CET MCA Aspirants</span> 
                             </h1>
                             
                             <div className="mt-4 space-y-4 text-sm sm:text-base text-muted-foreground">
                                 <p className="font-medium text-foreground/90">
-                                    Today is your opportunity to turn months of hard work into success. Stay calm, trust your preparation, and give your best in every question.
+                                    The CET MCA Entrance Exam has come to an end, and we want to sincerely thank every student who joined our crash course and trusted us to be a part of your preparation journey.
+                                </p>
+                                
+                                <p>
+                                    No matter how you feel about your exam today, remember that <span className="font-semibold text-foreground">every concept you learned and every hour you invested in preparing was valuable</span>. Knowledge is never wasted—it will help you in your academic journey, career, and many moments throughout life.
                                 </p>
 
-                                <div className="p-4 rounded-xl border border-amber-500/25 bg-amber-500/5 text-amber-600 dark:text-amber-400 text-xs sm:text-sm">
-                                    <span className="font-bold">💡 Remember:</span> There is <span className="font-bold underline decoration-amber-500/40">no negative marking</span>, so don't leave any question unanswered. If you're unsure about an answer, make your best educated guess—every question is an opportunity to score.
+                                <p>
+                                    If the exam didn't go exactly as you hoped, don't lose confidence. One exam does not define your potential. Keep learning, keep growing, and new opportunities will always come your way.
+                                </p>
+
+                                <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 text-primary text-xs sm:text-sm font-semibold">
+                                    Thank you for believing in us and placing your trust in our course. Your support means everything to us.
                                 </div>
+
+                                <p>
+                                    We hope to meet many of you soon at the <span className="font-semibold text-foreground">College of Engineering Trivandrum (CET)</span>. Until then, we wish you all the very best for your results and the exciting journey ahead.
+                                </p>
                                 
-                                <div className="pt-4 border-t border-border flex justify-between items-center text-xs text-muted-foreground">
+                                <div className="pt-4 border-t border-border flex justify-between items-center text-xs text-muted-foreground flex-wrap gap-2">
+                                    <span className="font-bold text-lg text-primary">See you at CET! ❤️😉</span>
                                     <span className="font-bold text-primary bg-primary/10 border border-primary/20 rounded-md px-2 py-0.5">by CETMCA-27</span>
                                 </div>
                             </div>
-                          
                         </div>
                     </div>
 
