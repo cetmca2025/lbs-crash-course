@@ -518,12 +518,12 @@ export default function StudentDashboard() {
                         <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-bl from-primary/10 via-transparent to-transparent rounded-full blur-2xl" />
                         <div className="relative">
                             <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
-                                Thank You to All Our <span className="gradient-text">CET MCA Aspirants</span> 
+                                Thank You to All Our <span className="gradient-text">LBS MCA Aspirants</span> 
                             </h1>
                             
                             <div className="mt-4 space-y-4 text-sm sm:text-base text-muted-foreground">
                                 <p className="font-medium text-foreground/90">
-                                    The CET MCA Entrance Exam has come to an end, and we want to sincerely thank every student who joined our crash course and trusted us to be a part of your preparation journey.
+                                    The LBS MCA Entrance Exam has come to an end, and we want to sincerely thank every student who joined our crash course and trusted us to be a part of your preparation journey.
                                 </p>
                                 
                                 <p>
